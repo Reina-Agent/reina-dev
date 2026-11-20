@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="en" class="dark">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- Mirrors main.html's CSP. script-src keeps 'unsafe-inline' because the
+         FOUC guard below (and Vite's inline modulepreload polyfill in the
+         built HTML) are inline scripts; styles likewise rely on inline
+         <style>/style attributes. -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: file: blob:; connect-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reina Settings</title>
+    <!-- FOUC guard: synchronously replay the last-applied appearance (mirrored
+         to localStorage by viewSettings.ts applyAppearance) before first
+         paint — no default-theme flash while settings load over async IPC. -->
+    <script>
+      (function () {
+        try {
+          var m = JSON.parse(localStorage.getItem("reina:appearance-mirror:app") || "null");
+          if (!m) return;
+          var root = document.documentElement;
+          var attrs = m.attrs || {};
+          for (var name in attrs) root.setAttribute(name, attrs[name]);
+          if (m.style) root.setAttribute("style", m.style);
+          var classes = m.classes || {};
+          for (var c in classes) root.classList.toggle(c, !!classes[c]);
+          if (m.lang) root.lang = m.lang;
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/entries/settings.tsx"></script>
+  </body>
+</html>

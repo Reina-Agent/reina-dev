@@ -1,0 +1,21 @@
+# Build output & deps
+dist/
+build/
+release/
+node_modules/
+**/dist/**
+**/build/**
+
+# Vendored third-party bundles (do not reformat)
+**/vendor/**
+
+# Generated / data
+.codegraph/
+.tmp/
+.logs/
+package-lock.json
+
+# Read-only external reference material
+参考/
+img/
+mockups/

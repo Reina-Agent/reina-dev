@@ -1,0 +1,1 @@
+export const description = "Send SIGTERM to a background shell task and mark it killed. Use this to stop a dev server, watcher, or runaway process — and to free its taskId. Already-completed/failed tasks return an error rather than silently succeeding.";

@@ -1,0 +1,49 @@
+name: CI
+
+# Quality gate for every push and pull request. The release workflow only
+# runs on `v*` tags and never type-checks or tests, so without this a broken
+# commit could be tagged and shipped. This job runs the same `check` + `test`
+# scripts a developer runs locally.
+#
+# Runs on windows-latest to match the platform the suite is verified green on
+# (some runTool tests assert Windows shell semantics). Electron's binary is
+# never needed by the test suite (vitest covers packages/* and the pure
+# main-process validators), so we skip its download to keep installs fast.
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+
+# Cancel superseded runs on the same ref so a force-push doesn't pile up jobs.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check-and-test:
+    name: Type-check & test
+    runs-on: windows-latest
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check (tsc -b)
+        run: npm run check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test (vitest run)
+        run: npm test

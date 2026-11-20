@@ -1,0 +1,607 @@
+.hitl-dock {
+  /* Same geometry as .composer so the two form a centered, fluid-width stack
+     aligned edge-for-edge with the message column (see --chat-aligned-width
+     in chat.css) instead of HITL spanning the whole chat pane. */
+  align-self: center;
+  width: var(--chat-aligned-width);
+  max-width: var(--chat-aligned-width);
+  margin: 0 auto 8px;
+  border: 1px solid var(--line-soft, var(--line));
+  border-radius: var(--r-md);
+  background: var(--panel);
+  overflow: hidden;
+}
+
+.hitl-dock[hidden] {
+  display: none;
+}
+
+.hitl-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 8px 4px 12px;
+  border-bottom: 1px solid var(--line-soft, var(--line));
+  min-height: 24px;
+}
+
+/* When there's exactly one pending action the count text is empty — the
+   header collapses to just the chevron, floated to the right corner of the
+   item itself. Saves ~30px of vertical space. */
+.hitl-dock.single .hitl-header {
+  border-bottom: 0;
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 4px;
+  min-height: 0;
+  background: transparent;
+  z-index: 1;
+}
+.hitl-dock.single {
+  position: relative;
+}
+
+.hitl-header strong {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+
+.hitl-header p {
+  display: none;
+}
+
+#hitl-collapse {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 4px;
+  border-radius: var(--r-sm);
+  transition: color 80ms ease, background 80ms ease, transform 120ms ease;
+}
+#hitl-collapse:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+#hitl-collapse .icon {
+  width: 14px;
+  height: 14px;
+  display: block;
+  transition: transform 120ms ease;
+}
+#hitl-collapse.rotated .icon {
+  transform: rotate(-90deg);
+}
+
+.hitl-dock.collapsed .hitl-list {
+  display: none;
+}
+.hitl-dock.collapsed .hitl-header {
+  border-bottom: 0;
+}
+/* When single+collapsed, the list is gone and there's no item for the header
+   to float over — keep the header in flow so the chevron stays visible and
+   clickable (otherwise overflow:hidden clips the absolutely-positioned
+   chevron and there's no way to re-expand the dock). */
+.hitl-dock.single.collapsed .hitl-header {
+  position: static;
+}
+
+.hitl-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+}
+
+.hitl-list:empty {
+  display: none;
+}
+
+/* Individual prompt: question + numbered options + free-text feedback +
+   keyboard hint. No card chrome — divider lines do the visual separation. */
+.hitl-item {
+  padding: 8px 12px 7px;
+  border-top: 1px solid var(--line-soft, var(--line));
+}
+.hitl-item:first-child {
+  border-top: 0;
+}
+
+.hitl-question {
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1.4;
+  margin: 0 28px 6px 0; /* right margin clears the corner chevron */
+  word-break: break-word;
+}
+
+/* Short tag/chip displayed above the question text. Mirrors Claude Code's
+   AskUserQuestion "header" — gives users a quick label to distinguish
+   multiple batched questions ("Auth method" / "Library" / "Approach"). */
+.hitl-question-header {
+  display: inline-block;
+  margin: 2px 0 4px;
+  padding: 1px 8px;
+  border-radius: var(--r-pill);
+  background: var(--panel-soft);
+  color: var(--text-muted);
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Question group: stacked questions inside one article share dividers and
+   one Submit. The article's normal padding handles outer spacing; we just
+   need internal separators between sub-questions. */
+.question-group .hitl-question-header:not(:first-child),
+.question-group .hitl-question:not(:first-child) + .hitl-question-header {
+  margin-top: 8px;
+  border-top: 1px solid var(--line-soft, var(--line));
+  padding-top: 8px;
+  border-radius: 0;
+  background: transparent;
+  display: block;
+  padding-left: 0;
+  padding-right: 0;
+}
+.question-group > .hitl-question-layout + .hitl-question-header {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft, var(--line));
+  display: block;
+  background: transparent;
+  padding-left: 0;
+  padding-right: 0;
+}
+.question-group > .hitl-feedback + .hitl-question-header {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line-soft, var(--line));
+  display: block;
+  background: transparent;
+  padding-left: 0;
+  padding-right: 0;
+}
+
+/* Batch mode compacts every option row and clamps descriptions to one line
+   so a card with 2-4 questions doesn't sprawl off the viewport. Solo mode
+   keeps the roomier 2-line layout for richer single-question pickers. */
+.question-group .hitl-options.has-descriptions .hitl-option {
+  padding: 5px 10px;
+}
+.question-group .hitl-options {
+  gap: 2px;
+}
+.question-group .hitl-option-desc {
+  -webkit-line-clamp: 1;
+  line-height: 1.3;
+}
+.question-group .hitl-question {
+  margin-bottom: 4px;
+}
+
+/* Staged-but-not-submitted single-select option in batch mode. Same visual
+   weight as the solo's `is-primary`, just driven by user action instead
+   of being the default. */
+.hitl-option.is-selected:not(.is-checkable) {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.hitl-option.is-selected:not(.is-checkable):hover {
+  background: var(--accent-hover);
+}
+.hitl-option.is-selected:not(.is-checkable) .hitl-option-num {
+  color: var(--accent-contrast);
+}
+
+.hitl-question code {
+  font-family: var(--font-code);
+  font-size: 0.92em;
+  padding: 1px 5px;
+  border-radius: var(--r-sm);
+  background: var(--panel-soft);
+  color: var(--text-strong);
+}
+
+/* Side-by-side layout: list on the left, preview pane on the right. The
+   layout container is always present so we don't need to special-case the
+   single-column mode — without a preview pane sibling, the list expands
+   naturally to fill the row. */
+.hitl-question-layout {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 6px;
+  min-width: 0;
+}
+
+/* Numbered options. The first (primary) row is filled accent; the rest are
+   ghost rows. The whole list reads as a vertical selector — like the
+   Claude Code permission prompt. */
+.hitl-options {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  flex: 1;
+  min-width: 0;
+}
+
+/* When previews are present, cap the options column so the preview pane
+   gets enough room. Otherwise option labels with long descriptions tend to
+   eat the whole row. */
+.has-previews .hitl-options {
+  flex: 0 0 280px;
+  max-width: 280px;
+}
+
+/* Preview pane: monospace text rendered to the right of the list. Updates
+   on option focus/hover. Borders + soft bg distinguish it from the option
+   buttons without competing for attention. */
+.hitl-preview {
+  flex: 1;
+  min-width: 0;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  padding: 8px 10px;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.hitl-preview-body {
+  margin: 0;
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  color: var(--text-muted);
+  white-space: pre;
+  /* Long lines wrap rather than horizontally scroll — preview content is
+     usually narrow ASCII art or short code snippets, not log dumps. */
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.hitl-option {
+  display: grid;
+  grid-template-columns: 20px 1fr;
+  align-items: center;
+  gap: 8px;
+  text-align: left;
+  appearance: none;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--panel-soft);
+  color: var(--text);
+  padding: 6px 10px;
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  outline: 0;
+  transition: background 80ms ease, color 80ms ease;
+}
+
+/* When at least one option in the list has a description, align all rows
+   to top so single-word labels don't visually center against tall siblings —
+   the number stays glued to the label line. */
+.hitl-options.has-descriptions .hitl-option {
+  align-items: start;
+  padding: 8px 10px;
+}
+.hitl-options.has-descriptions .hitl-option-num {
+  /* Nudge the digit down a touch to baseline-align with the bold label
+     once font metrics push the label down inside .hitl-option-body. */
+  padding-top: 1px;
+}
+.hitl-option:hover {
+  background: var(--panel-hover);
+}
+/* Keyboard focus state: visible whether the option is primary or ghost. */
+.hitl-option:focus-visible {
+  box-shadow: none;
+}
+.hitl-option.is-primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+}
+.hitl-option.is-primary:hover {
+  background: var(--accent-hover);
+}
+
+/* Multi-select: add a leading checkbox between the number and the body.
+   Grid template shifts to accommodate. Selected state uses a soft accent
+   tint instead of fully-painted bg so multiple selections don't shout. */
+.hitl-option.is-checkable {
+  grid-template-columns: 20px 16px 1fr;
+}
+.hitl-option.is-selected {
+  background: var(--accent-soft);
+  box-shadow: none;
+}
+
+.hitl-option-check {
+  width: 14px;
+  height: 14px;
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  background: var(--bg);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+.hitl-option-check.checked {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.hitl-option-check.checked::after {
+  content: "";
+  width: 8px;
+  height: 4px;
+  border-left: 2px solid var(--accent-contrast);
+  border-bottom: 2px solid var(--accent-contrast);
+  transform: rotate(-45deg) translate(1px, -1px);
+}
+.hitl-option.is-muted .hitl-option-label {
+  color: var(--text-muted);
+}
+.hitl-option.is-muted:hover .hitl-option-label {
+  color: var(--text);
+}
+
+.hitl-option-num {
+  color: var(--text-faint);
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  text-align: center;
+  user-select: none;
+}
+.hitl-option.is-primary .hitl-option-num {
+  color: var(--accent-contrast);
+}
+
+.hitl-option-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.hitl-option-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 500;
+}
+
+.hitl-option-desc {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  /* Multi-line: allow wrapping but cap at 2 lines to keep the list compact.
+     Falls back gracefully on browsers without -webkit-line-clamp. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.hitl-option.is-primary .hitl-option-desc {
+  color: var(--accent-contrast);
+}
+.hitl-option.is-muted .hitl-option-desc {
+  color: var(--text-faint);
+}
+
+/* Free-text feedback / answer input below the options. */
+.hitl-feedback {
+  width: 100%;
+  height: 26px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  color: var(--text);
+  padding: 0 8px;
+  font: inherit;
+  font-size: var(--fs-xs);
+  box-sizing: border-box;
+  transition: border-color 80ms ease;
+}
+.hitl-feedback:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.hitl-feedback::placeholder {
+  color: var(--text-faint);
+}
+
+.hitl-hint {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 4px;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.hitl-hint-keys {
+  color: var(--text-faint);
+}
+
+.hitl-hint-sep {
+  color: var(--text-faint);
+  opacity: 0.6;
+}
+
+/* Secondary actions live in the hint row as muted text links. Discoverable,
+   keyboard-shortcutable (the (3) (4) suffixes), but visually subordinate to
+   the main Allow/Reject buttons. */
+.hitl-hint-link {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--fs-xs);
+  padding: 0;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+  transition: color 80ms ease;
+}
+.hitl-hint-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+.hitl-hint-link:focus-visible {
+  outline: 1px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Batch row at the top of the list when multiple prompts are queued. */
+.hitl-batch {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 14px;
+  background: var(--panel-soft);
+  border-bottom: 1px solid var(--line-soft, var(--line));
+}
+.hitl-batch-note {
+  flex: 1;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.hitl-batch-button {
+  appearance: none;
+  height: 24px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: background 80ms ease;
+}
+.hitl-batch-button:hover {
+  background: var(--bg);
+}
+.hitl-batch-primary {
+  background: var(--accent);
+  color: var(--accent-contrast);
+  border-color: var(--accent);
+}
+.hitl-batch-primary:hover {
+  background: var(--accent-hover);
+}
+
+/* Inline editor expansion when "Edit input first" is chosen. */
+.hitl-editor {
+  margin-top: 8px;
+  padding: 8px;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.hitl-editor label {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+.hitl-editor textarea {
+  width: 100%;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-sm);
+  background: var(--panel);
+  color: var(--text);
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+  resize: vertical;
+  box-sizing: border-box;
+}
+.hitl-editor textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.hitl-editor-error {
+  color: var(--danger);
+  font-size: var(--fs-xs);
+}
+.hitl-form-actions {
+  display: flex;
+  gap: 6px;
+  justify-content: flex-end;
+}
+
+.hitl-diff-preview {
+  margin: 6px 0 8px;
+  padding: 6px 8px;
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  border: 1px solid var(--line);
+  font-family: var(--font-code);
+  font-size: 11px;
+  line-height: 1.5;
+  max-height: 220px;
+  overflow: auto;
+}
+
+.hitl-diff-line {
+  display: grid;
+  grid-template-columns: 14px 1fr;
+  gap: 6px;
+  white-space: pre;
+  overflow: hidden;
+}
+
+.hitl-diff-line.is-add {
+  color: var(--success);
+  background: var(--success-soft);
+}
+
+.hitl-diff-line.is-del {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+.hitl-diff-line.is-hunk {
+  color: var(--text-muted);
+  margin-top: 4px;
+  font-style: italic;
+}
+
+.hitl-diff-line.is-ctx {
+  color: var(--text-faint);
+}
+
+.hitl-diff-line.is-more {
+  color: var(--text-faint);
+  font-style: italic;
+  padding-top: 2px;
+}
+
+.hitl-diff-sign {
+  text-align: right;
+  user-select: none;
+  opacity: 0.7;
+}
+
+.hitl-diff-code {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

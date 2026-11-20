@@ -1,0 +1,1 @@
+export const description = "Roster of every async task this session has started (status + agent + brief + counters, no bodies). Use after a fan-out to plan, after a compaction/reload to recover, or when you don't recognize a sub_<id> the engine surfaced. For bodies use `gather_async_tasks`; for one task use `check_async_task`.";

@@ -1,0 +1,116 @@
+name: Release
+
+# Builds Reina desktop packages on every `v*` tag push (e.g. v0.1.0) and
+# attaches the installers to the matching GitHub Release. Can also be run
+# manually from the Actions tab (manual runs upload artifacts but do not
+# publish a Release).
+on:
+  push:
+    tags:
+      - "v*"
+  workflow_dispatch: {}
+
+permissions:
+  contents: write # needed to create/update the GitHub Release
+
+jobs:
+  build:
+    name: Build ${{ matrix.name }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Windows installer + portable, x64. node-pty is native, so it must
+          # be built on Windows. Pinned to windows-2022: windows-latest now
+          # ships Visual Studio 2026 (version 18), which @electron/node-gyp
+          # does not recognize ("unsupported version: 18"), so the node-pty
+          # rebuild fails there.
+          - name: windows-x64
+            os: windows-2022
+            builder_args: --win nsis portable --x64 --publish never
+            # latest.yml + the .blockmap are the electron-updater feed metadata
+            # (generated for the nsis target even under --publish never). They
+            # must ship to the release the updater polls (the public mirror).
+            # Artifacts land flat in release/ (no subdir): a "/" in artifactName
+            # makes the name non-GitHub-safe, which makes electron-builder write a
+            # DIFFERENT (renamed) filename into latest.yml than the asset actually
+            # uploaded — the updater would then 404 on download.
+            artifacts: |
+              release/*.exe
+              release/*.blockmap
+              release/latest.yml
+          # macOS Apple Silicon (arm64). Intel/x64 is intentionally dropped.
+          # node-pty is native and cannot be cross-compiled, so a separate
+          # arm64 runner (macos-14) is required.
+          - name: macos-arm64
+            os: macos-14
+            builder_args: --mac dmg zip --arm64 --publish never
+            artifacts: |
+              release/*.dmg
+              release/*.zip
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build desktop bundles
+        run: npm run build:desktop
+
+      # package.json sets npmRebuild:false, so electron-builder will NOT rebuild
+      # native modules. Rebuild node-pty against the Electron ABI explicitly,
+      # otherwise the packaged app crashes on launch.
+      - name: Rebuild native modules for Electron
+        run: npm --workspace=@reina/desktop run rebuild-native
+
+      - name: Package
+        run: npx electron-builder ${{ matrix.builder_args }}
+
+      # Publish to the GitHub Release FIRST — action-gh-release attaches the
+      # installers directly to the Release and does NOT consume Actions artifact
+      # storage. Doing this before the artifact upload means a full storage
+      # quota can never block the actual release.
+      - name: Publish to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: ${{ matrix.artifacts }}
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # Publish the SAME installers to the public source repo
+      # (Reina-Agent/Reina) — the download home users and the auto-updater poll.
+      # Cross-repo publish needs a PAT with contents:write on the target —
+      # stored as the MIRROR_TOKEN secret. action-gh-release is idempotent, so
+      # the win + mac jobs both append to the same v* release.
+      - name: Publish installers to Reina-Agent/Reina
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          repository: Reina-Agent/Reina
+          token: ${{ secrets.MIRROR_TOKEN }}
+          tag_name: ${{ github.ref_name }}
+          files: ${{ matrix.artifacts }}
+          fail_on_unmatched_files: true
+
+      # Artifact upload is only useful for manual workflow_dispatch runs (which
+      # don't publish a Release). It counts against the shared artifact storage
+      # quota, so keep retention tiny and never let a full quota fail the build —
+      # the Release above is already published.
+      - name: Upload build artifacts
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: reina-${{ matrix.name }}
+          path: ${{ matrix.artifacts }}
+          if-no-files-found: error
+          retention-days: 1

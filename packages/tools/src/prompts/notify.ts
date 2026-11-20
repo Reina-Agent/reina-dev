@@ -1,0 +1,1 @@
+export const description = "Post a native desktop notification (Electron Notification API). Useful when a long-running task completes and the user has switched away from the app, or to surface time-sensitive results. Returns immediately; the notification itself is fire-and-forget.";

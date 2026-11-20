@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: file: blob:; connect-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reina Menu</title>
+    <script>
+      (function () {
+        try {
+          var m = JSON.parse(localStorage.getItem("reina:appearance-mirror:chat") || "null");
+          if (!m) return;
+          var root = document.documentElement;
+          var attrs = m.attrs || {};
+          for (var name in attrs) root.setAttribute(name, attrs[name]);
+          if (m.style) root.setAttribute("style", m.style);
+          var classes = m.classes || {};
+          for (var c in classes) root.classList.toggle(c, !!classes[c]);
+        } catch (e) {}
+      })();
+    </script>
+    <script>
+      (function () {
+        var sheets = ["base.css", "themes.css"];
+        for (var i = 0; i < sheets.length; i++) {
+          var link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = "./legacy-styles/" + sheets[i];
+          document.head.appendChild(link);
+        }
+      })();
+    </script>
+  </head>
+  <body data-window="conversation-menu">
+    <div id="root"></div>
+    <script type="module" src="/src/entries/conversation-menu.tsx"></script>
+  </body>
+</html>

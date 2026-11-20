@@ -1,0 +1,42 @@
+﻿# Added by code-review-graph
+.code-review-graph/
+node_modules/
+dist/
+.reina/sessions/
+.reina/tasks/
+.reina/tool-output/
+.reina/*.db
+.reina/*.db-*
+.vscode/
+.claude/
+CLAUDE.md
+*.log
+# Ignore all reference repos and files under the reference folder.
+参考/
+.logs/
+.reina/
+.omc/
+.playwright-mcp/
+.tmp/
+.codegraph/
+.cursor/
+mockups/
+AGENTS.md
+output/
+release/
+# Local-only electron-updater dev feed (opt-in; see *.example).
+apps/desktop/dev-app-update.yml
+release-build*/
+release-local*/
+release-fixed*/
+release-final*/
+release-portable*/
+mcps/
+.jcgraph/
+outputs/
+website/
+# Local-only image scratch (logo source etc.); only logo/demo assets are tracked.
+img/ChatGPT*.png
+/mockups
+/debug
+/scratch

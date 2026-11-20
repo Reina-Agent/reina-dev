@@ -1,0 +1,71 @@
+/* Bundled open-source fonts (SIL OFL 1.1) so the appearance font pickers work
+ * on machines that don't have these installed — without this, most picks
+ * silently fall back to the same system font and "changing the font" looks
+ * like a no-op. Latin variable-weight subsets only (~190KB total); non-Latin
+ * glyphs (中文 etc.) intentionally fall through to the system fonts later in
+ * each stack. Family names must match UI_FONT_STACKS / CODE_FONT_STACKS in
+ * viewSettings.ts + legacyAppearance.ts exactly.
+ * Proprietary picks (Anthropic Sans, PingFang, SF Mono, YaHei, Segoe) cannot
+ * be redistributed and keep resolving from the system. */
+
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("./inter-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+/* Open-source stand-in for the proprietary Anthropic Sans (a Styrene
+ * derivative): Familjen Grotesk is the closest OFL grotesque, slotted into
+ * the anthropic stack right after the real fonts. */
+@font-face {
+  font-family: "Familjen Grotesk";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./familjen-grotesk-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+/* Familjen Grotesk with its metrics aligned to Anthropic Sans Text (x-height
+ * 0.54em, ascent/descent 0.9925/-0.2575, matched average advance) — built by
+ * scratchpad fontTools script, OFL 1.1, renamed per the license. */
+@font-face {
+  font-family: "Reina Sans";
+  font-style: normal;
+  font-weight: 400 700;
+  font-display: swap;
+  src: url("./reina-sans-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("./jetbrains-mono-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Fira Code";
+  font-style: normal;
+  font-weight: 300 700;
+  font-display: swap;
+  src: url("./fira-code-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Source Code Pro";
+  font-style: normal;
+  font-weight: 200 900;
+  font-display: swap;
+  src: url("./source-code-pro-latin-wght-normal.woff2") format("woff2-variations");
+}
+
+@font-face {
+  font-family: "Cascadia Code";
+  font-style: normal;
+  font-weight: 200 700;
+  font-display: swap;
+  src: url("./cascadia-code-latin-wght-normal.woff2") format("woff2-variations");
+}

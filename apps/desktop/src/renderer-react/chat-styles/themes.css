@@ -1,0 +1,510 @@
+/* Color-scheme gallery themes — a monochrome-leaning neutral family with a
+ * designed temperature spread. Modeled on how HeroUI / Radix / Linear build
+ * their "neutral" scales: NOT pure zero-hue grey (which reads flat and
+ * default), but neutrals carrying a whisper of hue (chroma stays tiny, so they
+ * still read as greyscale) for richer, more intentional surfaces. Each theme
+ * picks a temperature so the gallery reads as warm ↔ neutral ↔ cool:
+ *   Mono   — pure neutral (the one deliberately hue-less option)
+ *   Graphite — warm graphite (pencil-grey)
+ *   Carbon / Midnight — cool (near-black / indigo)
+ * Only the neutral ramp (surfaces / text / accent) carries the tint; the
+ * functional status tokens (success / warning / danger, diffs) keep Reina's
+ * default muted hues so destructive actions and diffs stay legible. Sent-bubble
+ * color is owned by the data-sent-bubble (chatSpark) system in chat.css — do
+ * NOT set --sent-bubble-* here. */
+
+/* ============================================================
+ * Mono — pure neutral: balanced contrast, layered surfaces, zero hue
+ * ============================================================ */
+:root[data-theme="mono"] {
+  color-scheme: dark;
+  --bg: #111113;
+  --panel: #1c1c1f;
+  --panel-soft: #252528;
+  --panel-elevated: #2e2e32;
+  --panel-hover: rgba(255, 255, 255, 0.055);
+  --panel-active: rgba(255, 255, 255, 0.085);
+  --panel-selected: rgba(255, 255, 255, 0.1);
+  --line: rgba(255, 255, 255, 0.1);
+  --line-soft: rgba(255, 255, 255, 0.06);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --text: #e2e2e2;
+  --text-strong: #fafafa;
+  --text-muted: #a3a3a3;
+  --text-faint: #7a7a7a;
+  --text-disabled: #555555;
+  --accent: #ffffff;
+  --accent-hover: #f0f0f0;
+  --accent-contrast: #111113;
+  --accent-soft: rgba(255, 255, 255, 0.12);
+  --success: #00a240;
+  --success-soft: rgba(0, 162, 64, 0.14);
+  --success-border: rgba(0, 162, 64, 0.28);
+  --warning: #b9a36f;
+  --warning-soft: rgba(185, 163, 111, 0.11);
+  --warning-border: rgba(185, 163, 111, 0.24);
+  --danger: #e02e2a;
+  --danger-soft: rgba(224, 46, 42, 0.12);
+  --danger-border: rgba(224, 46, 42, 0.25);
+  --danger-text: #ffb4ae;
+  --diff-added: rgba(0, 162, 64, 0.12);
+  --diff-added-text: #91d6a8;
+  --diff-removed: rgba(224, 46, 42, 0.12);
+  --diff-removed-text: #ffb4ae;
+  --diff-hunk: rgba(255, 255, 255, 0.08);
+  --diff-hunk-text: #c8c8c8;
+  --control-bg: rgba(255, 255, 255, 0.05);
+  --control-bg-hover: rgba(255, 255, 255, 0.085);
+  --control-bg-strong: rgba(255, 255, 255, 0.12);
+  --overlay-bg: rgba(0, 0, 0, 0.62);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.16);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
+  --code-bg: rgba(255, 255, 255, 0.06);
+  --switch-bg: rgba(255, 255, 255, 0.16);
+  --switch-knob: #f4f4f4;
+  --composer-bg: #1c1c1f;
+  --composer-bg-focus: #252528;
+  --composer-border: rgba(255, 255, 255, 0.14);
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+}
+
+:root[data-theme="mono"] ::selection {
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+/* ============================================================
+ * Onyx — pure OLED near-black: deepest hue-less dark with lifted ink surfaces
+ * ============================================================ */
+:root[data-theme="onyx"] {
+  color-scheme: dark;
+  --bg: #050506;
+  --panel: #101012;
+  --panel-soft: #18181b;
+  --panel-elevated: #202024;
+  --panel-hover: rgba(255, 255, 255, 0.05);
+  --panel-active: rgba(255, 255, 255, 0.08);
+  --panel-selected: rgba(255, 255, 255, 0.095);
+  --line: rgba(255, 255, 255, 0.1);
+  --line-soft: rgba(255, 255, 255, 0.06);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --text: #e6e6e6;
+  --text-strong: #fafafa;
+  --text-muted: #9a9a9a;
+  --text-faint: #6e6e6e;
+  --text-disabled: #4a4a4a;
+  --accent: #ffffff;
+  --accent-hover: #f0f0f0;
+  --accent-contrast: #050506;
+  --accent-soft: rgba(255, 255, 255, 0.12);
+  --success: #00a240;
+  --success-soft: rgba(0, 162, 64, 0.14);
+  --success-border: rgba(0, 162, 64, 0.28);
+  --warning: #b9a36f;
+  --warning-soft: rgba(185, 163, 111, 0.11);
+  --warning-border: rgba(185, 163, 111, 0.24);
+  --danger: #e02e2a;
+  --danger-soft: rgba(224, 46, 42, 0.12);
+  --danger-border: rgba(224, 46, 42, 0.25);
+  --danger-text: #ffb4ae;
+  --diff-added: rgba(0, 162, 64, 0.12);
+  --diff-added-text: #91d6a8;
+  --diff-removed: rgba(224, 46, 42, 0.12);
+  --diff-removed-text: #ffb4ae;
+  --diff-hunk: rgba(255, 255, 255, 0.08);
+  --diff-hunk-text: #c8c8c8;
+  --control-bg: rgba(255, 255, 255, 0.05);
+  --control-bg-hover: rgba(255, 255, 255, 0.085);
+  --control-bg-strong: rgba(255, 255, 255, 0.12);
+  --overlay-bg: rgba(0, 0, 0, 0.7);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.16);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.28);
+  --code-bg: rgba(255, 255, 255, 0.06);
+  --switch-bg: rgba(255, 255, 255, 0.16);
+  --switch-knob: #f4f4f4;
+  --composer-bg: #101012;
+  --composer-bg-focus: #18181b;
+  --composer-border: rgba(255, 255, 255, 0.12);
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+}
+
+:root[data-theme="onyx"] ::selection {
+  background: rgba(255, 255, 255, 0.24);
+  color: #ffffff;
+}
+
+/* ============================================================
+ * Graphite — warm mid-grey dark: pencil-graphite temperature, quiet hairlines
+ * ============================================================ */
+:root[data-theme="graphite"] {
+  color-scheme: dark;
+  --bg: #211e1b;
+  --panel: #2c2824;
+  --panel-soft: #36312c;
+  --panel-elevated: #403a34;
+  --panel-hover: rgba(255, 255, 255, 0.055);
+  --panel-active: rgba(255, 255, 255, 0.09);
+  --panel-selected: rgba(255, 255, 255, 0.09);
+  --line: rgba(255, 255, 255, 0.1);
+  --line-soft: rgba(255, 255, 255, 0.06);
+  --line-strong: rgba(255, 255, 255, 0.17);
+  --text: #dad6d2;
+  --text-strong: #f4f0ec;
+  --text-muted: #a29e9a;
+  --text-faint: #7c7874;
+  --text-disabled: #5e5a56;
+  --accent: #ece8e4;
+  --accent-hover: #fdfbf7;
+  --accent-contrast: #1f1b17;
+  --accent-soft: rgba(255, 255, 255, 0.11);
+  --success: #00a240;
+  --success-soft: rgba(0, 162, 64, 0.14);
+  --success-border: rgba(0, 162, 64, 0.28);
+  --warning: #b9a36f;
+  --warning-soft: rgba(185, 163, 111, 0.11);
+  --warning-border: rgba(185, 163, 111, 0.24);
+  --danger: #e02e2a;
+  --danger-soft: rgba(224, 46, 42, 0.12);
+  --danger-border: rgba(224, 46, 42, 0.25);
+  --danger-text: #ffb4ae;
+  --diff-added: rgba(0, 162, 64, 0.12);
+  --diff-added-text: #91d6a8;
+  --diff-removed: rgba(224, 46, 42, 0.12);
+  --diff-removed-text: #ffb4ae;
+  --diff-hunk: rgba(255, 255, 255, 0.08);
+  --diff-hunk-text: #c8c8c8;
+  --control-bg: rgba(255, 255, 255, 0.045);
+  --control-bg-hover: rgba(255, 255, 255, 0.08);
+  --control-bg-strong: rgba(255, 255, 255, 0.11);
+  --overlay-bg: rgba(0, 0, 0, 0.58);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.15);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.26);
+  --code-bg: rgba(255, 255, 255, 0.055);
+  --switch-bg: rgba(255, 255, 255, 0.15);
+  --switch-knob: #ece8e4;
+  --composer-bg: #2c2824;
+  --composer-bg-focus: #36312c;
+  --composer-border: rgba(255, 255, 255, 0.12);
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+}
+
+:root[data-theme="graphite"] ::selection {
+  background: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
+}
+
+/* ============================================================
+ * Carbon — cool near-black: high contrast, strong hairlines, blue-black tint
+ * ============================================================ */
+:root[data-theme="carbon"] {
+  color-scheme: dark;
+  --bg: #07090d;
+  --panel: #10131a;
+  --panel-soft: #181c24;
+  --panel-elevated: #212630;
+  --panel-hover: rgba(255, 255, 255, 0.055);
+  --panel-active: rgba(255, 255, 255, 0.09);
+  --panel-selected: rgba(255, 255, 255, 0.1);
+  --line: rgba(255, 255, 255, 0.11);
+  --line-soft: rgba(255, 255, 255, 0.06);
+  --line-strong: rgba(255, 255, 255, 0.19);
+  --text: #ebedf1;
+  --text-strong: #ffffff;
+  --text-muted: #989a9e;
+  --text-faint: #6d6f73;
+  --text-disabled: #484a4e;
+  --accent: #ffffff;
+  --accent-hover: #f5f5f5;
+  --accent-contrast: #000000;
+  --accent-soft: rgba(255, 255, 255, 0.12);
+  --success: #00a240;
+  --success-soft: rgba(0, 162, 64, 0.14);
+  --success-border: rgba(0, 162, 64, 0.28);
+  --warning: #b9a36f;
+  --warning-soft: rgba(185, 163, 111, 0.11);
+  --warning-border: rgba(185, 163, 111, 0.24);
+  --danger: #e02e2a;
+  --danger-soft: rgba(224, 46, 42, 0.12);
+  --danger-border: rgba(224, 46, 42, 0.25);
+  --danger-text: #ffb4ae;
+  --diff-added: rgba(0, 162, 64, 0.12);
+  --diff-added-text: #91d6a8;
+  --diff-removed: rgba(224, 46, 42, 0.12);
+  --diff-removed-text: #ffb4ae;
+  --diff-hunk: rgba(255, 255, 255, 0.09);
+  --diff-hunk-text: #cdcdcd;
+  --control-bg: rgba(255, 255, 255, 0.055);
+  --control-bg-hover: rgba(255, 255, 255, 0.095);
+  --control-bg-strong: rgba(255, 255, 255, 0.14);
+  --overlay-bg: rgba(0, 0, 0, 0.68);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.18);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.3);
+  --code-bg: rgba(255, 255, 255, 0.07);
+  --switch-bg: rgba(255, 255, 255, 0.18);
+  --switch-knob: #ffffff;
+  --composer-bg: #10131a;
+  --composer-bg-focus: #181c24;
+  --composer-border: rgba(255, 255, 255, 0.14);
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+}
+
+:root[data-theme="carbon"] ::selection {
+  background: rgba(255, 255, 255, 0.26);
+  color: #ffffff;
+}
+
+/* ============================================================
+ * Midnight — deep cool indigo-black: the darkest dark, blue-leaning neutrals
+ * ============================================================ */
+:root[data-theme="midnight"] {
+  color-scheme: dark;
+  --bg: #050711;
+  --panel: #0f1220;
+  --panel-soft: #171a2a;
+  --panel-elevated: #202438;
+  --panel-hover: rgba(255, 255, 255, 0.055);
+  --panel-active: rgba(255, 255, 255, 0.08);
+  --panel-selected: rgba(255, 255, 255, 0.09);
+  --line: rgba(255, 255, 255, 0.1);
+  --line-soft: rgba(255, 255, 255, 0.06);
+  --line-strong: rgba(255, 255, 255, 0.18);
+  --text: #e4e6ee;
+  --text-strong: #f9fafe;
+  --text-muted: #a3a5ad;
+  --text-faint: #73757d;
+  --text-disabled: #50525a;
+  --accent: #d5d7df;
+  --accent-hover: #f1f2f8;
+  --accent-contrast: #050711;
+  --accent-soft: rgba(255, 255, 255, 0.09);
+  --success: #00a240;
+  --success-soft: rgba(0, 162, 64, 0.14);
+  --success-border: rgba(0, 162, 64, 0.28);
+  --warning: #b9a36f;
+  --warning-soft: rgba(185, 163, 111, 0.11);
+  --warning-border: rgba(185, 163, 111, 0.24);
+  --danger: #e02e2a;
+  --danger-soft: rgba(224, 46, 42, 0.12);
+  --danger-border: rgba(224, 46, 42, 0.25);
+  --danger-text: #ffb4ae;
+  --diff-added: rgba(0, 162, 64, 0.12);
+  --diff-added-text: #91d6a8;
+  --diff-removed: rgba(224, 46, 42, 0.12);
+  --diff-removed-text: #ffb4ae;
+  --diff-hunk: rgba(255, 255, 255, 0.08);
+  --diff-hunk-text: #c8c8c8;
+  --control-bg: rgba(255, 255, 255, 0.05);
+  --control-bg-hover: rgba(255, 255, 255, 0.085);
+  --control-bg-strong: rgba(255, 255, 255, 0.12);
+  --overlay-bg: rgba(0, 0, 0, 0.66);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.1);
+  --scrollbar-thumb-hover: rgba(255, 255, 255, 0.18);
+  --code-bg: rgba(255, 255, 255, 0.06);
+  --switch-bg: rgba(255, 255, 255, 0.16);
+  --switch-knob: #f1f2f8;
+  --composer-bg: #0f1220;
+  --composer-bg-focus: #171a2a;
+  --composer-border: rgba(255, 255, 255, 0.14);
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+}
+
+:root[data-theme="midnight"] ::selection {
+  background: rgba(150, 165, 255, 0.26);
+  color: #ffffff;
+}
+
+/* ============================================================
+ * Porcelain — cool light neutral: grey canvas, white cards, ink accent
+ * ============================================================ */
+:root[data-theme="porcelain"] {
+  color-scheme: light;
+  --bg: #f1f3f6;
+  --panel: #ffffff;
+  --panel-soft: #eceef1;
+  --panel-elevated: #ffffff;
+  --panel-hover: rgba(0, 0, 0, 0.045);
+  --panel-active: rgba(0, 0, 0, 0.07);
+  --panel-selected: rgba(0, 0, 0, 0.06);
+  --line: rgba(0, 0, 0, 0.1);
+  --line-soft: rgba(0, 0, 0, 0.06);
+  --line-strong: rgba(0, 0, 0, 0.18);
+  --text: #232528;
+  --text-strong: #0c0e11;
+  --text-muted: #6b6d70;
+  --text-faint: #97999c;
+  --text-disabled: #c1c3c6;
+  --accent: #14161b;
+  --accent-hover: #04050a;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgba(0, 0, 0, 0.07);
+  --success: #00a240;
+  --success-soft: rgba(0, 162, 64, 0.11);
+  --success-border: rgba(0, 162, 64, 0.26);
+  --warning: #9a6906;
+  --warning-soft: rgba(154, 105, 6, 0.09);
+  --warning-border: rgba(154, 105, 6, 0.22);
+  --danger: #e02e2a;
+  --danger-soft: rgba(224, 46, 42, 0.1);
+  --danger-border: rgba(224, 46, 42, 0.24);
+  --danger-text: #a21815;
+  --diff-added: rgba(0, 162, 64, 0.13);
+  --diff-added-text: #006d2c;
+  --diff-removed: rgba(224, 46, 42, 0.13);
+  --diff-removed-text: #a21815;
+  --diff-hunk: rgba(0, 0, 0, 0.08);
+  --diff-hunk-text: #565656;
+  --control-bg: rgba(0, 0, 0, 0.04);
+  --control-bg-hover: rgba(0, 0, 0, 0.07);
+  --control-bg-strong: rgba(0, 0, 0, 0.1);
+  --overlay-bg: rgba(0, 0, 0, 0.32);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.18);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+  --code-bg: rgba(0, 0, 0, 0.06);
+  --switch-bg: rgba(0, 0, 0, 0.16);
+  --switch-knob: #ffffff;
+  --composer-bg: #ffffff;
+  --composer-bg-focus: #ffffff;
+  --composer-border: rgba(0, 0, 0, 0.14);
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+}
+
+:root[data-theme="porcelain"] ::selection {
+  background: rgba(0, 0, 0, 0.14);
+  color: #000000;
+}
+
+/* ============================================================
+ * Snow — pure white canvas, black accent, crisp borders, zero hue
+ * ============================================================ */
+:root[data-theme="snow"] {
+  color-scheme: light;
+  --bg: #ffffff;
+  --panel: #ffffff;
+  --panel-soft: #f4f4f5;
+  --panel-elevated: #ffffff;
+  --panel-hover: rgba(0, 0, 0, 0.04);
+  --panel-active: rgba(0, 0, 0, 0.07);
+  --panel-selected: rgba(0, 0, 0, 0.06);
+  --line: rgba(0, 0, 0, 0.09);
+  --line-soft: rgba(0, 0, 0, 0.05);
+  --line-strong: rgba(0, 0, 0, 0.16);
+  --text: #1f1f1f;
+  --text-strong: #000000;
+  --text-muted: #666666;
+  --text-faint: #949494;
+  --text-disabled: #c0c0c0;
+  --accent: #000000;
+  --accent-hover: #1f1f1f;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgba(0, 0, 0, 0.08);
+  --success: #00a240;
+  --success-soft: rgba(0, 162, 64, 0.11);
+  --success-border: rgba(0, 162, 64, 0.26);
+  --warning: #9a6906;
+  --warning-soft: rgba(154, 105, 6, 0.09);
+  --warning-border: rgba(154, 105, 6, 0.22);
+  --danger: #e02e2a;
+  --danger-soft: rgba(224, 46, 42, 0.1);
+  --danger-border: rgba(224, 46, 42, 0.24);
+  --danger-text: #a21815;
+  --diff-added: rgba(0, 162, 64, 0.13);
+  --diff-added-text: #006d2c;
+  --diff-removed: rgba(224, 46, 42, 0.13);
+  --diff-removed-text: #a21815;
+  --diff-hunk: rgba(0, 0, 0, 0.08);
+  --diff-hunk-text: #565656;
+  --control-bg: rgba(0, 0, 0, 0.04);
+  --control-bg-hover: rgba(0, 0, 0, 0.075);
+  --control-bg-strong: rgba(0, 0, 0, 0.11);
+  --overlay-bg: rgba(0, 0, 0, 0.32);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.18);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.3);
+  --code-bg: rgba(0, 0, 0, 0.055);
+  --switch-bg: rgba(0, 0, 0, 0.16);
+  --switch-knob: #ffffff;
+  --composer-bg: #ffffff;
+  --composer-bg-focus: #fafafa;
+  --composer-border: rgba(0, 0, 0, 0.12);
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+}
+
+:root[data-theme="snow"] ::selection {
+  background: rgba(0, 0, 0, 0.16);
+  color: #000000;
+}
+
+/* ============================================================
+ * Silver — cool deeper-grey light: soft contrast between surfaces
+ * ============================================================ */
+:root[data-theme="silver"] {
+  color-scheme: light;
+  --bg: #e6e8eb;
+  --panel: #f7f8fa;
+  --panel-soft: #eef0f3;
+  --panel-elevated: #ffffff;
+  --panel-hover: rgba(0, 0, 0, 0.05);
+  --panel-active: rgba(0, 0, 0, 0.08);
+  --panel-selected: rgba(0, 0, 0, 0.07);
+  --line: rgba(0, 0, 0, 0.12);
+  --line-soft: rgba(0, 0, 0, 0.07);
+  --line-strong: rgba(0, 0, 0, 0.2);
+  --text: #2d2f32;
+  --text-strong: #0f1114;
+  --text-muted: #606265;
+  --text-faint: #8a8c8f;
+  --text-disabled: #b2b4b7;
+  --accent: #17191e;
+  --accent-hover: #03040a;
+  --accent-contrast: #ffffff;
+  --accent-soft: rgba(0, 0, 0, 0.08);
+  --success: #00a240;
+  --success-soft: rgba(0, 162, 64, 0.11);
+  --success-border: rgba(0, 162, 64, 0.26);
+  --warning: #9a6906;
+  --warning-soft: rgba(154, 105, 6, 0.09);
+  --warning-border: rgba(154, 105, 6, 0.22);
+  --danger: #e02e2a;
+  --danger-soft: rgba(224, 46, 42, 0.1);
+  --danger-border: rgba(224, 46, 42, 0.24);
+  --danger-text: #a21815;
+  --diff-added: rgba(0, 162, 64, 0.13);
+  --diff-added-text: #006d2c;
+  --diff-removed: rgba(224, 46, 42, 0.13);
+  --diff-removed-text: #a21815;
+  --diff-hunk: rgba(0, 0, 0, 0.08);
+  --diff-hunk-text: #565656;
+  --control-bg: rgba(0, 0, 0, 0.05);
+  --control-bg-hover: rgba(0, 0, 0, 0.085);
+  --control-bg-strong: rgba(0, 0, 0, 0.12);
+  --overlay-bg: rgba(0, 0, 0, 0.34);
+  --scrollbar-thumb: rgba(0, 0, 0, 0.2);
+  --scrollbar-thumb-hover: rgba(0, 0, 0, 0.32);
+  --code-bg: rgba(0, 0, 0, 0.06);
+  --switch-bg: rgba(0, 0, 0, 0.18);
+  --switch-knob: #ffffff;
+  --composer-bg: #f7f8fa;
+  --composer-bg-focus: #ffffff;
+  --composer-border: rgba(0, 0, 0, 0.13);
+  --shadow-sm: none;
+  --shadow-md: none;
+  --shadow-lg: none;
+}
+
+:root[data-theme="silver"] ::selection {
+  background: rgba(0, 0, 0, 0.16);
+  color: #000000;
+}

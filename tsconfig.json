@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [
+    { "path": "./packages/protocol" },
+    { "path": "./packages/desktop-protocol" },
+    { "path": "./packages/providers" },
+    { "path": "./packages/tools" },
+    { "path": "./packages/core" },
+    { "path": "./packages/agent-host" },
+    { "path": "./apps/desktop" }
+  ]
+}

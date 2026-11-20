@@ -1,0 +1,179 @@
+/* subagent-chips.css — the AgentChipRow transcript entry (codex-style subagent
+   chips). One colored-dot pill per dispatch, wrapping row, inline expand panel.
+   All colors reference the theme tokens injected by legacyAppearance/base46 so
+   the chips follow every palette; the shiki syntax hues widen the identity
+   palette on base46 themes and gracefully fall back elsewhere. */
+
+.entry.subagent-chips {
+  white-space: normal;
+}
+
+.subagent-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.subagent-chip {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 5px 12px 5px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--control-bg);
+  color: var(--text);
+  font-size: var(--fs-sm, 12.5px);
+  line-height: 1.4;
+  cursor: pointer;
+  transition: background 120ms ease, border-color 120ms ease;
+}
+
+.subagent-chip:hover {
+  background: var(--control-bg-hover);
+}
+
+.subagent-chip.open {
+  border-color: var(--line-strong);
+  background: var(--control-bg-strong);
+}
+
+/* Identity hue — set per chip by the .color-N class, consumed by the dot. */
+.subagent-chip.color-0 { --chip-hue: var(--accent); }
+.subagent-chip.color-1 { --chip-hue: var(--shiki-token-keyword, var(--accent)); }
+.subagent-chip.color-2 { --chip-hue: var(--shiki-token-string-expression, var(--success)); }
+.subagent-chip.color-3 { --chip-hue: var(--success); }
+.subagent-chip.color-4 { --chip-hue: var(--warning); }
+.subagent-chip.color-5 { --chip-hue: var(--shiki-token-parameter, var(--danger)); }
+
+.chip-dot {
+  flex: none;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--chip-hue, var(--accent));
+}
+
+/* Running: breathing dot. Unconditional animation — Reina deliberately ignores
+   OS reduce-motion (see dev notes); do not add a media-query gate. */
+.subagent-chip.status-running .chip-dot {
+  animation: subagent-chip-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes subagent-chip-pulse {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 var(--chip-hue, var(--accent));
+  }
+  50% {
+    opacity: 0.45;
+    box-shadow: 0 0 6px 0 var(--chip-hue, var(--accent));
+  }
+}
+
+.subagent-chip.status-failed .chip-dot {
+  background: var(--danger);
+}
+
+.chip-label {
+  font-weight: 600;
+  max-width: 240px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chip-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  color: var(--text-muted);
+  font-size: var(--fs-xs, 11.5px);
+}
+
+.chip-tail {
+  max-width: 220px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.subagent-chip.status-completed .chip-glyph {
+  color: var(--success);
+}
+
+.subagent-chip.status-failed .chip-glyph,
+.subagent-chip.status-failed .chip-tail {
+  color: var(--danger-text, var(--danger));
+}
+
+/* ── Inline expand panel ──────────────────────────────────────────────────── */
+
+.subagent-chip-detail {
+  margin-top: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-soft);
+  border-radius: 10px;
+  background: var(--panel-soft);
+  font-size: var(--fs-sm, 12.5px);
+}
+
+.chip-detail-meta {
+  margin-bottom: 6px;
+  color: var(--text-faint);
+  font-size: var(--fs-xs, 11.5px);
+}
+
+.chip-detail-brief {
+  margin-bottom: 8px;
+  color: var(--text);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chip-detail-steps {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0 0 0 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border-left: 2px solid var(--line-soft);
+}
+
+.chip-detail-step {
+  color: var(--text-muted);
+  font-size: var(--fs-xs, 11.5px);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chip-detail-step.status-failed {
+  color: var(--danger-text, var(--danger));
+}
+
+.chip-detail-error {
+  margin-bottom: 8px;
+  color: var(--danger-text, var(--danger));
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.chip-detail-output {
+  margin-bottom: 8px;
+  max-height: 240px;
+  overflow: auto;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: var(--code-bg);
+  color: var(--text-muted);
+  font-size: var(--fs-xs, 12px);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}

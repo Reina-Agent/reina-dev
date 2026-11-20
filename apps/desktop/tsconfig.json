@@ -1,0 +1,19 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "../../dist/apps/desktop",
+    // Restrict ambient @types to what the main process needs. Without this, tsc
+    // auto-includes every @types/* package — including the empty/broken
+    // @types/plist pulled transitively by app-builder-lib (electron-builder) —
+    // which fails the build (TS2688). Electron + libs resolve types via import.
+    "types": ["node"]
+  },
+  "include": ["src/**/*.ts"],
+  // renderer-react is a separate Vite project with its own tsconfig (bundler
+  // resolution, ~ alias, react-jsx) — it must NOT be compiled by the main-process
+  // build. It is typechecked via `npm run typecheck:renderer-react` and bundled
+  // by Vite.
+  "exclude": ["src/renderer-react/**"],
+  "references": [{ "path": "../../packages/desktop-protocol" }]
+}

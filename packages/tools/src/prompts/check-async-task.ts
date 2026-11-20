@@ -1,0 +1,1 @@
+export const description = "Status of ONE async task: `running` / `completed` / `failed` / `cancelled` / `recoverable` / `needs_attention` / `resuming`, plus recovery metadata, turn counters, and result/error when present. For many tasks at once use `list_async_tasks` (headers) or `gather_async_tasks` (bodies). Don't tight-loop poll.";

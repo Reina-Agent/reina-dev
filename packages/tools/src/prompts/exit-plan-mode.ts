@@ -1,0 +1,1 @@
+export const description = "Present the final plan and ask the user to either approve it (which also exits plan mode so writes can proceed) or keep iterating. Use this only in plan mode and only when you have a complete plan; the user must approve before any state-changing tools can run.";

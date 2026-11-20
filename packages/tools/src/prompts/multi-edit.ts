@@ -1,0 +1,1 @@
+export const description = "Apply multiple edit_file-style replacements to a single file atomically (all-or-nothing). Use for 2+ edits to the same file. Each entry uses (`oldText`, `newText`, optional `replaceAll`); edits apply sequentially, each seeing the previous result. Same prerequisites as edit_file.";

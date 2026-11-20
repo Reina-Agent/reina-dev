@@ -1,0 +1,1 @@
+export const description = "Create a new file or fully overwrite an existing one (user sees a diff before it's written). Prefer edit_file for modifying existing files — write_file replaces everything and is harder to review. Use for new files, scaffolding, or >50% rewrites. `path` is workspace-relative; parent dirs are created as needed.";

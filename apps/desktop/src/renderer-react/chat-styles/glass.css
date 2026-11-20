@@ -1,0 +1,218 @@
+/* Frosted glass (毛玻璃) mode — Raycast-style, one whole block.
+ *
+ * Activated by :root.glass-on, which actions/local-settings.js toggles from the
+ * persisted view-settings `glass` flag. The Electron main process (windows.ts)
+ * turns the native window into a Windows 11 *acrylic* sheet, so the blurred
+ * desktop shows through anything the renderer leaves transparent.
+ *
+ * Goal: the entire window reads as ONE frosted sheet, not a pile of glass
+ * cards. We do that by making every surface transparent up to a single
+ * translucent tint layer on .main-surface, then borrowing Raycast's exact
+ * recipe for the glass edge:
+ *   - translucent dark gradient fill          (depth + text legibility)
+ *   - 0.8px hairline white rim                 (the glass border)
+ *   - inset top highlight                      (the rim light — the soul of it)
+ *
+ * Reference (raycast.com navbar, computed): blur(5px); border 0.8px
+ * rgba(255,255,255,.06); flat rim, no elevation shadow.
+ * background linear-gradient(137deg, rgba(17,18,20,.75), rgba(12,13,15,.9)).
+ *
+ * Tunables live in :root.glass-on so the look can be nudged in one place.
+ */
+
+:root.glass-on {
+  /* Deep, dark glass like Raycast. Windows acrylic adds a milky white
+   * luminosity layer, so we counter it with a heavier dark tint (high alpha)
+   * and only a whisper of white overlay — otherwise the whole thing reads
+   * washed-out / grey. Bump the *-tint alphas toward 1 for an even darker look. */
+  --glass-tint-top: rgba(16, 17, 20, 0.84);
+  --glass-tint-bottom: rgba(7, 8, 10, 0.95);
+  --glass-rim: rgba(255, 255, 255, 0.05);
+  --glass-highlight: rgba(255, 255, 255, 0.09);
+  --glass-panel: rgba(255, 255, 255, 0.022);
+  --glass-panel-strong: rgba(255, 255, 255, 0.045);
+}
+
+:root.glass-on body[data-os="mac"] {
+  /* macOS vibrancy can turn low-alpha dark fills into a washed-out grey sheet,
+   * especially over bright wallpaper. Use a darker renderer tint and let the
+   * native blur show through only subtly. */
+  --glass-tint-top: rgba(14, 15, 18, 0.76);
+  --glass-tint-bottom: rgba(5, 6, 8, 0.88);
+  --glass-rim: rgba(255, 255, 255, 0.055);
+  --glass-highlight: rgba(255, 255, 255, 0.04);
+  --glass-panel: rgba(0, 0, 0, 0.18);
+  --glass-panel-strong: rgba(0, 0, 0, 0.32);
+}
+
+/* NOTE: no backdrop-filter here. The blur is the OS acrylic material behind the
+ * transparent window (windows.ts). Adding backdrop-filter on top of an acrylic
+ * window makes Chromium read back an empty backdrop and paint it black, killing
+ * the see-through. The translucent gradient + rim below is the Raycast look. */
+
+/* Let the acrylic backdrop reach the page: nothing paints opaque above the
+ * single tint layer. */
+:root.glass-on,
+:root.glass-on body {
+  background: transparent !important;
+}
+
+/* ── Main window: the one frosted block ──────────────────────────────── */
+
+:root.glass-on body[data-window="main"] .app {
+  /* These tokens feed .main-surface / .main-layout / .session-pane in
+   * style.css; emptying them out hands the look over to the rules below. */
+  --main-surface-0: transparent;
+  --main-surface-1: var(--glass-panel);
+  --main-hairline: rgba(255, 255, 255, 0.08);
+  --main-hairline-strong: rgba(255, 255, 255, 0.12);
+  --main-shadow-panel: none;
+  --main-shadow-floating: none;
+}
+
+/* The single sheet. Spans topbar + sidebar + chat as one continuous pane. */
+:root.glass-on body[data-window="main"] .main-surface {
+  background: linear-gradient(155deg, var(--glass-tint-top) 0%, var(--glass-tint-bottom) 82%);
+  box-shadow: none;
+}
+
+/* Inner panes share the sheet — keep them see-through, drop the floating-card
+ * chrome so there are no seams. */
+:root.glass-on body[data-window="main"] .main-layout,
+:root.glass-on body[data-window="main"] .chat-pane,
+:root.glass-on body[data-window="main"] .timeline,
+:root.glass-on body[data-window="main"] .topbar {
+  background: transparent !important;
+}
+
+:root.glass-on body[data-window="main"] .session-pane {
+  /* Transparent — the sidebar sits ON TOP of .main-surface's dark frosted
+   * gradient, so leaving it transparent makes it show the exact same glass as
+   * the chat area (verified: a red test fill on .main-surface bleeds through
+   * here). Painting a gradient here instead would double-stack into a near-solid
+   * black panel with no see-through. */
+  background: transparent;
+  box-shadow: none;
+}
+:root.glass-on body[data-window="main"] .session-pane::after {
+  display: none; /* the floating-card edge gradient fights the single sheet */
+}
+
+/* Composer is an input surface, so it keeps a touch more fill and its own
+ * glass edge to stay legible against busy wallpaper. */
+:root.glass-on body[data-window="main"] .composer {
+  background: linear-gradient(155deg, rgba(22, 23, 27, 0.86), rgba(10, 11, 14, 0.95)) !important;
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+}
+
+:root.glass-on body[data-os="mac"][data-window="main"] .composer {
+  background: linear-gradient(155deg, rgba(18, 19, 22, 0.78), rgba(7, 8, 10, 0.90)) !important;
+  border-color: rgba(255, 255, 255, 0.06);
+}
+:root.glass-on body[data-os="mac"][data-window="main"] .composer:focus-within {
+  border-color: rgba(255, 255, 255, 0.10);
+}
+:root.glass-on body[data-window="main"] .composer:focus-within {
+  /* Neutral border brighten only — no colored ring/glow (removed per request). */
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: none;
+}
+:root.glass-on body[data-os="mac"] .command-palette {
+  background: rgba(0, 0, 0, 0.34);
+}
+
+/* Composer launchers are listed without the mac qualifier: on Windows glass
+ * the frosted style.css rule is gated off (no backdrop-filter over acrylic),
+ * so this gradient keeps both `/` and `+` launchers translucent there too. */
+:root.glass-on body[data-os="mac"] .command-panel,
+:root.glass-on body[data-os="mac"] .composer-popover,
+:root.glass-on .slash-popover,
+:root.glass-on .composer-add-menu,
+:root.glass-on body[data-os="mac"] .workspace-popover,
+:root.glass-on body[data-os="mac"] .context-menu {
+  background: linear-gradient(155deg, rgba(19, 20, 23, 0.80), rgba(7, 8, 10, 0.92)) !important;
+  border-color: rgba(255, 255, 255, 0.065) !important;
+}
+
+/* Welcome overlay (no workspace open yet) — match the sheet so it isn't an
+ * opaque slab over the acrylic. */
+:root.glass-on body[data-window="main"] .welcome-screen {
+  background: linear-gradient(155deg, var(--glass-tint-top) 0%, var(--glass-tint-bottom) 82%);
+}
+
+/* ── In-chat surfaces ────────────────────────────────────────────────────
+ * Markdown renders inline code, code blocks and table headers as opaque
+ * rgb(29,29,29) slabs. On the dark glass those read as heavy grey boxes, so
+ * make them translucent too: inline code = faint light chip, code blocks =
+ * recessed dark glass, table header = whisper of light. */
+:root.glass-on body[data-window="main"] #timeline :not(pre) > code {
+  background: rgba(255, 255, 255, 0.06);
+  border: 0.5px solid rgba(255, 255, 255, 0.08);
+}
+:root.glass-on body[data-window="main"] #timeline pre,
+:root.glass-on body[data-window="main"] #timeline pre > code,
+:root.glass-on body[data-window="main"] #timeline .hljs {
+  background: rgba(0, 0, 0, 0.26) !important;
+}
+:root.glass-on body[data-window="main"] #timeline pre {
+  border: 0.8px solid rgba(255, 255, 255, 0.06);
+}
+:root.glass-on body[data-window="main"] #timeline th {
+  background: rgba(255, 255, 255, 0.05);
+}
+:root.glass-on body[data-window="main"] #timeline blockquote {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+/* ── Workspace window: same one-sheet treatment ──────────────────────── */
+:root.glass-on body[data-window="workspace"] .app,
+:root.glass-on body[data-window="workspace"] .main-surface,
+:root.glass-on body[data-window="workspace"] .main-layout,
+:root.glass-on body[data-window="workspace"] .workspace-pane {
+  background: transparent !important;
+  box-shadow: none;
+}
+:root.glass-on body[data-window="workspace"] .main-surface {
+  background: linear-gradient(155deg, var(--glass-tint-top) 0%, var(--glass-tint-bottom) 82%) !important;
+  box-shadow: none;
+}
+
+/* Sidebar companion window: it gets the native glass material too, but its
+ * normal style.css branch paints .session-pane as an opaque panel. Override
+ * that branch so the whole companion window reads as the same frosted sheet. */
+:root.glass-on body[data-window="sidebar"] .app {
+  --main-surface-0: transparent;
+  --main-surface-1: var(--glass-panel);
+  --main-hairline: rgba(255, 255, 255, 0.08);
+  --main-hairline-strong: rgba(255, 255, 255, 0.12);
+  --main-shadow-panel: none;
+  --main-shadow-floating: none;
+}
+
+:root.glass-on body[data-window="sidebar"] .main-surface,
+:root.glass-on body[data-window="sidebar"] .main-layout {
+  background: transparent !important;
+  box-shadow: none;
+}
+
+:root.glass-on body[data-window="sidebar"] .session-pane {
+  background: linear-gradient(155deg, var(--glass-tint-top) 0%, var(--glass-tint-bottom) 82%) !important;
+  box-shadow: none;
+}
+
+:root.glass-on body[data-window="sidebar"] .session-pane::after {
+  display: none;
+}
+
+:root.glass-on body[data-window="sidebar"] .session-footer {
+  /* Mask scrolled rows behind the sticky footer by deepening into the pane's
+     own dark glass tint — NOT --glass-panel(-strong), which is a translucent
+     WHITE lift and read as a whitish haze at the bottom of the dark window. */
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--glass-tint-bottom) 70%, transparent) 48%,
+    var(--glass-tint-bottom) 100%
+  );
+}

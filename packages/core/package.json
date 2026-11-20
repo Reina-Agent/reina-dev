@@ -1,0 +1,15 @@
+{
+  "name": "@reina/core",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "@reina/protocol": "0.1.0",
+    "@reina/providers": "0.1.0",
+    "@reina/tools": "0.1.0",
+    "js-tiktoken": "^1.0.21"
+  }
+}

@@ -1,0 +1,997 @@
+/* Main window layout preset.
+ *
+ * This file is loaded by multiple renderer windows, so every rule below is
+ * scoped to body[data-window="main"]. Shared tokens stay in base.css; shared
+ * component primitives stay in topbar/sidebar/composer/chat.css.
+ */
+
+body[data-window="main"] .app {
+  --main-shell-inset: 8px;
+  --main-sidebar-padding: 10px;
+  --main-sidebar-header-space: 38px;
+  --main-resizer-width: 6px;
+  --main-surface-0: var(--bg);
+  /* --sidebar-chrome is injected inline on <html> by base46 themes (their
+     palette-specific sidebar surface). It must be a separate variable: redefining
+     --main-surface-1 here would shadow any inherited inline value. */
+  --main-surface-1: var(--sidebar-chrome, var(--panel));
+  /* The workspace surface remains theme-derived; the sidebar itself is lifted
+   * onto it by its solid surface, hairline and HeroUI-style shadow. */
+  --main-surface-sunken: color-mix(in srgb, var(--bg) 88%, #000);
+  --main-hairline: color-mix(in srgb, var(--line) 92%, transparent);
+  --main-hairline-strong: color-mix(in srgb, var(--line-strong) 72%, transparent);
+  --main-top-highlight: color-mix(in srgb, var(--text-strong) 5%, transparent);
+  /* Matches HeroUI Pro's floating sidebar elevation. */
+  --main-shadow-panel:
+    0 10px 15px -3px rgba(0, 0, 0, 0.1),
+    0 4px 6px -4px rgba(0, 0, 0, 0.1);
+  --main-shadow-floating: none;
+  --main-motion: 340ms cubic-bezier(0.2, 0.9, 0.18, 1);
+}
+
+body[data-window="main"] .main-surface {
+  border: 0;
+  background: var(--main-surface-0);
+  box-shadow: none;
+  overflow: visible;
+}
+
+body[data-window="main"] .main-layout {
+  grid-template-columns:
+    var(--session-pane-animated-width, clamp(240px, var(--session-pane-width), 380px))
+    var(--session-pane-resizer-animated-width, var(--main-resizer-width))
+    minmax(0, 1fr)
+    var(--task-pane-resizer-col, 0px)
+    var(--task-pane-col, 0px);
+  padding: 0;
+  column-gap: 0;
+  background: var(--main-surface-0);
+  overflow: visible;
+}
+
+body[data-window="main"] .topbar {
+  background: transparent;
+  border-bottom: 0;
+}
+
+body[data-window="main"] .topbar-end {
+  grid-column: 3;
+}
+
+body[data-window="main"] .topbar-end .topbar-workspace-toggle {
+  border-color: transparent;
+  background: transparent;
+}
+
+body[data-window="main"] .topbar-end .topbar-workspace-toggle:hover {
+  background: var(--panel-hover);
+}
+
+body[data-window="main"] .title-icon-button,
+body[data-window="main"] .open-with-control,
+body[data-window="main"] .topbar-end .topbar-workspace-toggle {
+  transition:
+    background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 120ms ease;
+}
+
+body[data-window="main"] .title-icon-button:active,
+body[data-window="main"] .open-with-toggle:active,
+body[data-window="main"] .topbar-end .topbar-workspace-toggle:active {
+  transform: translateY(1px);
+}
+
+body[data-window="main"] .open-with-control {
+  margin: 0;
+  background: transparent;
+}
+
+body[data-window="main"] .open-with-control:hover,
+body[data-window="main"] .open-with-control.is-open {
+  background: color-mix(in srgb, var(--panel-hover) 74%, transparent);
+}
+
+body[data-window="main"] .open-with-toggle:hover {
+  background: transparent;
+}
+
+body[data-window="main"] .open-with-menu,
+body[data-window="main"] .composer-popover {
+  border-color: var(--main-hairline-strong);
+  background: color-mix(in srgb, var(--panel-elevated) 86%, #0e0e0e);
+  box-shadow: none;
+}
+
+/* Codex-style frosted composer launchers: translucent fill + backdrop blur so
+ * the chat shimmers through. Gated to non-glass mode — under :root.glass-on
+ * the window is acrylic and backdrop-filter reads back an empty backdrop and
+ * paints black (see glass.css), so glass mode keeps its gradient instead. */
+:root:not(.glass-on) body[data-window="main"] .slash-popover,
+:root:not(.glass-on) body[data-window="main"] .composer-add-menu {
+  border-color: var(--main-hairline-strong);
+  background: color-mix(in srgb, var(--panel-elevated) 76%, transparent);
+  backdrop-filter: blur(24px) saturate(1.4);
+  -webkit-backdrop-filter: blur(24px) saturate(1.4);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.22);
+}
+
+body[data-window="main"] .app:not(.session-collapsed) .topbar-title-wrap {
+  display: none;
+}
+
+body[data-window="main"] .app:not(.session-collapsed) .session-pane {
+  /* Floating card: inset from the window edges with a gap on the left/bottom,
+   * rounded corners and an all-round hairline, lifted a shade above the chat
+   * surface (--main-surface-1) so it reads as a panel sitting ON the chat rather
+   * than a pit sunk below it. margin-top still pulls it up under the topbar; the
+   * matching height adds that back minus the top/bottom inset. */
+  margin:
+    calc(var(--main-shell-inset) - var(--topbar-height))
+    0
+    var(--main-shell-inset)
+    var(--main-shell-inset);
+  height: calc(
+    100% + var(--topbar-height) - var(--main-shell-inset) - var(--main-shell-inset)
+  );
+  padding:
+    var(--main-sidebar-header-space)
+    4px
+    var(--main-sidebar-padding)
+    var(--main-sidebar-padding);
+  background: var(--main-surface-1);
+  border: 1px solid var(--main-hairline);
+  border-radius: 16px;
+  box-shadow: var(--main-shadow-panel);
+  overflow: hidden;
+}
+
+body[data-window="main"] .session-pane::after {
+  height: 72px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--main-surface-1) 38%, transparent) 55%,
+    color-mix(in srgb, var(--main-surface-1) 70%, transparent) 100%
+  );
+}
+
+/* Plain row matching the New Agent / Search buttons below it — no boxed
+   dropdown chrome. Still opens the workspace popover on click. */
+body[data-window="main"] .project-card {
+  display: grid;
+  grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  margin: 0 0 1px;
+  padding: 0 var(--session-sidebar-item-inset);
+  /* Same 1px transparent border as the action-row buttons so the text
+     x-position matches them exactly. */
+  border: 1px solid transparent;
+  border-radius: var(--session-sidebar-item-radius);
+  background: transparent;
+  color: var(--text);
+  -webkit-app-region: no-drag;
+  box-shadow: none;
+  transition:
+    background-color 140ms ease, border-color 140ms ease, color 140ms ease, transform 90ms ease;
+}
+
+body[data-window="main"] .project-card-icon {
+  width: 13px;
+  height: 13px;
+  justify-self: center;
+  color: var(--text-muted);
+}
+
+body[data-window="main"] .project-card h1 {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Compact single-line card: the path line is hidden (full path moves to the
+   card's hover tooltip + the switcher popover). */
+body[data-window="main"] .project-card p {
+  display: none;
+}
+
+body[data-window="main"] .project-card:hover {
+  background: color-mix(in srgb, var(--panel-hover) 86%, transparent);
+  color: var(--text-strong);
+}
+
+body[data-window="main"] .project-card[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--panel-active) 82%, transparent);
+  color: var(--text-strong);
+  box-shadow: none;
+}
+
+body[data-window="main"] .project-card-caret {
+  position: static;
+  width: 11px;
+  height: 11px;
+  transform: none;
+}
+
+body[data-window="main"] .project-card[aria-expanded="true"] .project-card-caret {
+  transform: rotate(180deg);
+}
+
+body[data-window="main"] .workspace-popover {
+  top: calc(var(--main-sidebar-header-space) + 34px);
+  left: var(--main-sidebar-padding);
+  right: var(--main-sidebar-padding);
+}
+
+body[data-window="main"] .session-actions-top {
+  gap: 1px;
+  margin-bottom: 12px;
+}
+
+body[data-window="main"] .session-actions-top button,
+body[data-window="main"] .session-main {
+  min-height: 30px;
+  border-color: transparent;
+  background: transparent;
+  transition:
+    background-color 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+
+body[data-window="main"] .session-actions-top button {
+  height: 30px;
+  gap: 8px;
+  font-size: var(--fs-sm);
+}
+
+body[data-window="main"] .session-actions-top button .icon {
+  width: 13px;
+  height: 13px;
+}
+
+body[data-window="main"] .session-actions-top button:hover,
+body[data-window="main"] .session-main:hover {
+  background: color-mix(in srgb, var(--panel-hover) 86%, transparent);
+}
+
+body[data-window="main"] .session-actions-top button:active,
+body[data-window="main"] .session-main:active {
+  background: color-mix(in srgb, var(--panel-active) 82%, transparent);
+}
+
+body[data-window="main"] .session-group-heading {
+  margin: 12px var(--session-sidebar-item-inset) 5px;
+  color: color-mix(in srgb, var(--text-faint) 88%, transparent);
+  font-size: 10.5px;
+}
+
+body[data-window="main"] .session-list {
+  gap: 4px;
+  padding: 0 0 8px;
+  /* Explicit scroll container: grow into the pane and scroll when the session
+     list is taller than the available space, regardless of flex-chain cascade. */
+  flex: 1 1 0;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Keep the forked-child indent working in the main window — the main-window
+   .session-main padding override (0 8px) out-specifies the base indent rule. */
+body[data-window="main"] .session-item .session-main {
+  padding-left: calc(8px + var(--session-depth, 0) * 16px);
+}
+
+body[data-window="main"] .session-list .session-group-heading:first-child {
+  margin-bottom: 8px;
+}
+
+body[data-window="main"] .session-main {
+  grid-template-columns: 10px minmax(0, 1fr) auto;
+  gap: 7px;
+  padding: 0 8px;
+  font-size: var(--fs-sm);
+}
+
+body[data-window="main"] .session-dot {
+  width: 5px;
+  height: 5px;
+}
+
+body[data-window="main"] .session-item.active .session-main {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--panel-soft) 84%, var(--panel-active));
+  box-shadow: none;
+}
+
+body[data-window="main"] .session-item.active .session-dot {
+  box-shadow: none;
+}
+
+body[data-window="main"] .session-item.is-running .session-dot {
+  box-shadow: 0 0 0 3px var(--success-soft);
+}
+
+body[data-window="main"] .session-model-chip {
+  max-width: 74px;
+  padding: 1px 5px;
+  border-color: color-mix(in srgb, var(--line-soft) 70%, transparent);
+  background: color-mix(in srgb, var(--panel-soft) 28%, transparent);
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+body[data-window="main"] .session-footer {
+  border-top: 0;
+}
+
+body[data-window="main"] .session-footer {
+  margin: 0 -4px -4px;
+  padding: 8px 8px 7px;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--main-surface-1) 60%, transparent) 42%,
+    var(--main-surface-1) 100%
+  );
+}
+
+body[data-window="main"] .session-pane-resizer {
+  width: var(--main-resizer-width);
+  background: transparent;
+}
+
+body[data-window="main"] .session-pane-resizer:hover,
+body[data-window="main"] .session-pane-resizer.active {
+  background: transparent;
+}
+
+body[data-window="main"] .topbar-start {
+  position: absolute;
+  height: auto;
+  padding: 0;
+  transform: none;
+  transition:
+    left var(--main-motion), top var(--main-motion);
+}
+
+/* macOS can restore its traffic lights before the fullscreen state event reaches
+ * the renderer. Snap horizontally into the 80px safe area so app controls never
+ * animate across the native buttons; keep the subtle vertical shell motion. */
+body[data-os="mac"][data-window="main"] .topbar-start {
+  transition: top var(--main-motion);
+}
+
+body[data-window="main"] .app:not(.session-collapsed) .topbar-start {
+  /* Pin the rail/new/more buttons to the top-left of the sidebar's reserved
+   * header strip (--main-sidebar-header-space), aligned with the project card
+   * below — not floated out to the sidebar's right edge. */
+  top: calc(var(--main-shell-inset) + 4px);
+  left: calc(var(--main-shell-inset) + var(--main-sidebar-padding));
+}
+
+body[data-window="main"] .app.session-collapsed .topbar-start {
+  top: 4px;
+  left: 8px;
+}
+
+body[data-window="main"] .composer {
+  border-radius: 14px;
+  padding: 10px 14px 8px;
+  border-color: color-mix(in srgb, var(--main-hairline-strong) 80%, transparent);
+  background: color-mix(in srgb, var(--composer-bg) 92%, var(--bg));
+  box-shadow: none;
+}
+
+body[data-window="main"] .composer:focus-within {
+  /* No colored focus ring/border — the halo glow and the mode-accent ring were
+     both removed per user request. Bypass/danger mode is signaled by the orange
+     "Bypass" label text instead. */
+  box-shadow: none;
+}
+
+body[data-window="main"] .composer textarea {
+  color: var(--text);
+}
+
+body[data-window="main"] .composer textarea::placeholder {
+  color: color-mix(in srgb, var(--text-faint) 86%, transparent);
+}
+
+body[data-window="main"] .composer-actions {
+  width: 100%;
+  flex-wrap: nowrap;
+  gap: 7px;
+  margin-top: 6px;
+  min-width: 0;
+}
+
+body[data-window="main"] .composer-actions > .select-button {
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+body[data-window="main"] .composer-selects {
+  flex: 0 1 auto;
+  width: auto;
+  gap: 3px;
+  margin-left: auto;
+  min-width: 0;
+  overflow: visible;
+}
+
+body[data-window="main"] .composer-selects .select-button {
+  min-width: 0;
+}
+
+body[data-window="main"] .composer-attach,
+body[data-window="main"] .composer-usage,
+body[data-window="main"] .send-button {
+  flex-shrink: 0;
+}
+
+body[data-window="main"] .send-button {
+  margin-left: 0;
+}
+
+body[data-window="main"] .select-button,
+body[data-window="main"] .composer-attach {
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+}
+
+/* The generic main-window control radius above is intentionally rectangular;
+   the add trigger is the one circular affordance in the left action group. */
+body[data-window="main"] .composer-add-trigger {
+  border-radius: 50%;
+}
+
+body[data-window="main"] .select-button {
+  height: 27px;
+  padding-inline: 10px;
+}
+
+body[data-window="main"] .select-button:hover,
+body[data-window="main"] .composer-attach:hover,
+body[data-window="main"] .composer-usage:hover {
+  background: color-mix(in srgb, var(--panel-hover) 82%, transparent);
+  color: var(--text-strong);
+}
+
+body[data-window="main"] .select-button[aria-expanded="true"],
+body[data-window="main"] .select-button.active {
+  background: color-mix(in srgb, var(--panel-active) 86%, transparent);
+  color: var(--text-strong);
+}
+
+body[data-window="main"] .composer-usage {
+  height: 27px;
+}
+
+body[data-window="main"] .send-button {
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  border-radius: 50%;
+  box-shadow: none;
+}
+
+body[data-window="main"] .send-button:active:not(:disabled) {
+  transform: translateY(0) scale(0.97);
+}
+
+body[data-window="main"] .send-button:disabled {
+  box-shadow: none;
+}
+
+body[data-window="main"] .welcome-card {
+  gap: 22px;
+  padding: 28px 28px 24px;
+  border-color: transparent;
+  border-radius: var(--r-lg);
+  background: var(--panel);
+  box-shadow: none;
+}
+
+body[data-window="main"] .welcome-avatar {
+  border-radius: 14px;
+}
+
+body[data-window="main"] .welcome-recent-row {
+  border-color: transparent;
+  border-radius: 8px;
+}
+
+body[data-window="main"] .welcome-recent-row:hover {
+  border-color: transparent;
+  background: var(--panel-hover);
+}
+
+body[data-window="main"] .welcome-open {
+  padding: 11px 18px;
+  border-radius: var(--r-pill);
+}
+
+body[data-window="main"] .app,
+body[data-window="main"] .main-layout {
+  transition: grid-template-columns var(--main-motion);
+}
+
+/* Mirror the left sidebar's rigid-content reveal for the full Workspace pane.
+ * Explicit pixel tracks keep all three outer columns interpolable; the regular
+ * clamp()/fr tracks otherwise make Chromium snap the Workspace almost directly
+ * to its final width. The iframe stays full-size and is clipped by the growing
+ * pane, so Git/Terminal/Files/Side Chat slide together instead of being squeezed. */
+body[data-window="main"] .app[data-workspace-sliding] {
+  grid-template-columns:
+    minmax(0, var(--workspace-chat-animated-width))
+    var(--workspace-resizer-animated-width)
+    minmax(0, var(--workspace-pane-animated-width));
+  transition: grid-template-columns 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+body[data-window="main"] .app[data-workspace-sliding][data-workspace-slide-seed] {
+  transition: none;
+}
+
+body[data-window="main"] .app[data-workspace-sliding] .main-surface {
+  overflow: hidden;
+}
+
+body[data-window="main"] .app[data-workspace-sliding] .workspace-frame {
+  min-width: var(--workspace-content-pin);
+}
+
+body[data-window="main"] .workspace-pane {
+  opacity: 1;
+  visibility: visible;
+  transform: translateX(0);
+  transition:
+    opacity 200ms ease,
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear;
+}
+
+body[data-window="main"] .workspace-pane-resizer {
+  opacity: 1;
+  visibility: visible;
+  transition:
+    opacity 160ms ease,
+    visibility 0s linear;
+}
+
+body[data-window="main"] .app.workspace-collapsed .workspace-pane {
+  opacity: 0;
+  visibility: hidden;
+  transform: translateX(18px);
+  pointer-events: none;
+  transition:
+    opacity 200ms ease,
+    transform 240ms cubic-bezier(0.22, 1, 0.36, 1),
+    visibility 0s linear 240ms;
+}
+
+body[data-window="main"] .app.workspace-collapsed .workspace-pane-resizer {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+  transition:
+    opacity 160ms ease,
+    visibility 0s linear 240ms;
+}
+
+/* Inline collapse runs as ONE declarative CSS transition on the grid columns
+ * (the shadcn/Alma model): JS only sets the start + end width, the browser
+ * interpolates grid-template-columns itself. The old approach drove it from a
+ * per-frame rAF loop, which put JS on the critical path every frame and
+ * stuttered on long conversations. Keep this duration in sync with
+ * INLINE_SESSION_PANE_ANIMATION_MS in renderer.js. */
+body[data-window="main"] .app.session-sliding .main-layout {
+  transition: grid-template-columns 240ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Seed frame: commit the start width with the animation suppressed, so the
+ * transition that follows starts from the real current width instead of
+ * snapping out of the clamp() fallback. */
+body[data-window="main"] .app.session-slide-seed .main-layout {
+  transition: none;
+}
+
+/* Inline collapse reads as a FADE, like Alma's sidebar: the content stays rigid
+ * (pinned, below) and the whole pane fades out as the grid column narrows,
+ * instead of visibly squeezing the rows (the "stretch" look). The fade is
+ * opacity ONLY — no transform / no will-change — to keep the fractional-DPR
+ * (125%) glyph re-raster on layer teardown as small as possible (the documented
+ * trap; on this text pane it's a modest list, and Alma proves an opacity fade
+ * stays clean when the node count is low). The genuinely expensive part — the
+ * chat reflowing as the column gives space back — is made cheap by
+ * content-visibility on .entry (chat.css), which is what keeps the whole thing
+ * smooth without virtualizing the timeline. Opacity is driven from JS (seed then
+ * flip) in step with the width. Border + shadow are dropped during the slide so
+ * no hairline sliver is left as the column reaches zero. */
+body[data-window="main"] .app.session-sliding .session-pane {
+  border-color: transparent;
+  box-shadow: none;
+  transition: opacity 200ms ease;
+}
+
+/* Pin the rows to their full content width for the duration of the slide so
+ * they don't re-ellipsize/reflow frame-by-frame as the column narrows. The
+ * pane's overflow:hidden clips them instead, so the content slides out as a
+ * rigid block. The pin is measured in JS (see animateInlineSessionPaneCollapsed)
+ * to avoid hard-coding the pane insets. min-width (not width) so rows that sit
+ * wider than the content box via negative margins — the footer — aren't yanked
+ * inward at the start of the slide. */
+body[data-window="main"] .app.session-sliding .session-pane > * {
+  min-width: var(--session-pane-content-pin, auto);
+}
+
+/* The real cost of the collapse is the CHAT: its message column is sized in
+ * percentages (92% of the pane), so every frame the column resizes, hundreds of
+ * messages rewrap — that's the stutter on long conversations. While the slide is
+ * in flight we freeze the timeline to a fixed pixel width (measured in JS) so
+ * the messages stop rewrapping; the column just recenters (align-self) as the
+ * pane resizes, which is cheap. It relaxes back to fluid width when the slide
+ * ends. Fallback 100% == the normal stretched width, so a missing var is a
+ * no-op. */
+body[data-window="main"] .app.session-sliding #timeline {
+  align-self: center;
+  width: var(--chat-timeline-freeze, 100%);
+}
+
+body[data-window="main"] .topbar-title-wrap {
+  transition: left var(--main-motion);
+}
+
+body[data-window="main"] .app.session-collapsed .session-pane,
+body[data-window="main"] .app.session-collapsed .session-pane-resizer {
+  display: flex;
+  width: 0;
+  min-width: 0;
+  margin: 0;
+  padding: 0;
+  border-color: transparent;
+  box-shadow: none;
+  pointer-events: none;
+}
+
+body[data-window="main"] .app.session-collapsed .session-pane-resizer {
+  flex: 0 0 0;
+}
+
+body[data-window="sidebar"] {
+  background: transparent;
+}
+
+body[data-window="sidebar"] .app {
+  --main-sidebar-padding: 14px;
+  --main-sidebar-header-space: 14px;
+  --sidebar-row-inset: 8px;
+  --sidebar-row-icon-col: 16px;
+  --sidebar-row-gap: 8px;
+  --sidebar-label-start: calc(var(--sidebar-row-inset) + var(--sidebar-row-icon-col) + var(--sidebar-row-gap));
+  /* Built-in themes: flat chat-sheet dark (no seam against the main window's
+     chat). base46 themes inject their palette-specific sidebar surface, so the
+     detached window keeps that theme's intended sidebar identity. */
+  --main-surface-1: var(--sidebar-chrome, var(--bg));
+  --main-hairline: color-mix(in srgb, var(--line) 74%, transparent);
+  --main-top-highlight: color-mix(in srgb, var(--text-strong) 5%, transparent);
+  --main-shadow-panel: none;
+  --session-pane-width: 280px;
+}
+
+body[data-window="sidebar"] .main-surface {
+  position: relative;
+  grid-template-rows: minmax(0, 1fr);
+  background: transparent;
+  overflow: visible;
+}
+
+body[data-window="sidebar"] .topbar {
+  position: absolute;
+  inset: 0;
+  height: 0;
+  z-index: 40;
+}
+
+body[data-window="sidebar"] .topbar-title-wrap,
+body[data-window="sidebar"] .topbar-end,
+body[data-window="sidebar"] .session-pane-resizer,
+body[data-window="sidebar"] .chat-pane {
+  display: none;
+}
+
+.session-window-drag-region {
+  display: none;
+}
+
+body[data-window="sidebar"] .session-window-drag-region {
+  position: absolute;
+  top: 0;
+  right: 12px;
+  left: 0;
+  z-index: 30;
+  display: block;
+  height: var(--main-sidebar-header-space);
+  -webkit-app-region: drag;
+}
+
+body[data-window="sidebar"] .topbar-start {
+  position: absolute;
+  top: 4px;
+  right: 10px;
+  height: auto;
+  padding: 0;
+  pointer-events: auto;
+}
+
+body[data-window="sidebar"] .main-layout {
+  grid-row: 1;
+  grid-template-columns: minmax(0, 1fr);
+  min-height: 0;
+  padding: 0;
+  background: transparent;
+}
+
+body[data-window="sidebar"] .session-pane {
+  grid-column: 1;
+  grid-row: 1;
+  display: flex;
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  opacity: 1;
+  pointer-events: auto;
+  padding:
+    var(--main-sidebar-header-space)
+    var(--main-sidebar-padding)
+    var(--main-sidebar-padding);
+  border: 0;
+  border-radius: 0;
+  /* Surface comes from --main-surface-1: built-ins resolve it to var(--bg)
+     (same sheet as the main window's chat — no seam), base46 themes inject
+     their sidebar chrome so the floating panel keeps the sidebar identity. */
+  background: var(--main-surface-1);
+  box-shadow: none;
+}
+
+/* Keep the list scroll-fade on the same surface as the pane. */
+body[data-window="sidebar"] .session-pane::after {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--main-surface-1) 82%, transparent) 52%,
+    var(--main-surface-1) 100%
+  );
+}
+
+/* Footer fade must land on the same surface too (the sidebar.css base rule
+   fades toward --panel, which is a different color under base46 themes). */
+body[data-window="sidebar"] .session-footer {
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--main-surface-1) 62%, transparent) 38%,
+    var(--main-surface-1) 100%
+  );
+}
+
+body[data-window="sidebar"] .app.session-collapsed .session-pane {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding:
+    var(--main-sidebar-header-space)
+    var(--main-sidebar-padding)
+    var(--main-sidebar-padding);
+  border: 0;
+  border-radius: 0;
+  background: var(--bg);
+  box-shadow: none;
+  pointer-events: auto;
+  opacity: 1;
+}
+
+/* Plain row matching the New Agent / Search buttons below it — no boxed
+   dropdown chrome. Same icon column + gap so the label lines up with theirs. */
+body[data-window="sidebar"] .project-card {
+  display: grid;
+  grid-template-columns: var(--sidebar-row-icon-col) minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--sidebar-row-gap);
+  min-height: 32px;
+  margin: 0 0 2px;
+  padding: 0 var(--sidebar-row-inset);
+  border: 1px solid transparent;
+  border-radius: var(--session-sidebar-item-radius);
+  background: transparent;
+  color: var(--text);
+}
+
+body[data-window="sidebar"] .project-card-icon {
+  width: 13px;
+  height: 13px;
+  justify-self: center;
+  color: color-mix(in srgb, var(--accent) 62%, var(--text-muted));
+}
+
+body[data-window="sidebar"] .project-card:hover,
+body[data-window="sidebar"] .project-card[aria-expanded="true"] {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--panel-hover) 84%, transparent);
+  color: var(--text-strong);
+}
+
+body[data-window="sidebar"] .project-card[aria-expanded="true"] {
+  background: color-mix(in srgb, var(--panel-active) 88%, transparent);
+  box-shadow: none;
+}
+
+body[data-window="sidebar"] .project-card h1 {
+  margin: 0;
+  min-width: 0;
+  overflow: hidden;
+  color: inherit;
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-window="sidebar"] .project-card-caret {
+  position: static;
+  width: 11px;
+  height: 11px;
+  transform: none;
+}
+
+body[data-window="sidebar"] .project-card[aria-expanded="true"] .project-card-caret {
+  transform: rotate(180deg);
+}
+
+body[data-window="sidebar"] .project-card p {
+  display: none;
+}
+
+body[data-window="sidebar"] .workspace-popover {
+  top: calc(var(--main-sidebar-header-space) + 40px);
+  left: var(--main-sidebar-padding);
+  right: var(--main-sidebar-padding);
+}
+
+body[data-window="sidebar"] .session-actions-top {
+  display: flex;
+  gap: 2px;
+  margin: 0 0 14px;
+  flex-direction: column;
+  overflow: visible;
+  scrollbar-gutter: auto;
+}
+
+body[data-window="sidebar"] .session-actions-top button,
+body[data-window="sidebar"] .session-main {
+  min-height: 30px;
+}
+
+body[data-window="sidebar"] .session-actions-top button {
+  display: grid;
+  grid-template-columns: var(--sidebar-row-icon-col) minmax(0, 1fr) auto;
+  height: 32px;
+  gap: var(--sidebar-row-gap);
+  padding: 0 var(--sidebar-row-inset);
+  border: 1px solid transparent;
+  border-radius: var(--session-sidebar-item-radius);
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  text-align: left;
+}
+
+body[data-window="sidebar"] #topbar-new-session,
+body[data-window="sidebar"] #topbar-search {
+  display: grid;
+}
+
+body[data-window="sidebar"] .session-actions-top button:hover {
+  background: color-mix(in srgb, var(--panel-hover) 84%, transparent);
+  color: var(--text-strong);
+}
+
+body[data-window="sidebar"] .session-actions-top button:active {
+  background: color-mix(in srgb, var(--panel-active) 88%, transparent);
+}
+
+body[data-window="sidebar"] .session-actions-top button .icon {
+  width: 13px;
+  height: 13px;
+  justify-self: center;
+  color: color-mix(in srgb, var(--accent) 62%, var(--text-muted));
+}
+
+body[data-window="sidebar"] .session-actions-top button span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+body[data-window="sidebar"] .session-group-heading {
+  margin: 12px var(--sidebar-row-inset) 5px;
+  font-size: 10.5px;
+}
+
+body[data-window="sidebar"] .session-list {
+  gap: 4px;
+  /* Detached window: pull the scroll container out to the window's right edge so
+     the scrollbar hugs it instead of floating 14px inside (which read as the whole
+     list being shoved left). Equal padding-right keeps the rows where they were. */
+  margin-right: calc(var(--main-sidebar-padding) * -1);
+  padding: 0 var(--main-sidebar-padding) 8px 0;
+}
+
+body[data-window="sidebar"] .session-list .session-group-heading:first-child {
+  margin-bottom: 8px;
+}
+
+body[data-window="sidebar"] .session-main {
+  grid-template-columns: var(--sidebar-row-icon-col) minmax(0, 1fr) auto;
+  gap: var(--sidebar-row-gap);
+  padding: 0 var(--sidebar-row-inset);
+  font-size: var(--fs-sm);
+}
+
+/* Keep forked sessions indented under their parent in the detached sidebar
+ * window too. The shorthand padding above resets padding-left, so re-apply the
+ * depth indent at higher specificity. Mirrors the body[data-window="main"] rule. */
+body[data-window="sidebar"] .session-item .session-main {
+  padding-left: calc(var(--sidebar-row-inset) + var(--session-depth, 0) * 16px);
+}
+
+body[data-window="sidebar"] .session-dot {
+  width: 5px;
+  height: 5px;
+  justify-self: center;
+}
+
+body[data-window="sidebar"] .session-model-chip {
+  max-width: 74px;
+  padding: 1px 5px;
+  font-size: 10px;
+  line-height: 1.35;
+}
+
+body[data-window="sidebar"] .session-footer {
+  margin: 8px calc(var(--main-sidebar-padding) * -1) calc(var(--main-sidebar-padding) * -1);
+  /* Keep the left inset aligned with the rows, but let the gear/settings button
+     hug the right edge instead of floating 14px inside (matches the scrollbar). */
+  padding: 8px 8px 10px var(--main-sidebar-padding);
+  border-top: 0;
+  background: linear-gradient(
+    to bottom,
+    transparent 0%,
+    color-mix(in srgb, var(--bg) 60%, transparent) 42%,
+    var(--bg) 100%
+  );
+}
+
+@media (max-width: 1040px) {
+  body[data-window="main"] .topbar-title-wrap {
+    width: 180px;
+  }
+
+  body[data-window="main"] .topbar-title-wrap .chat-header-meta {
+    display: none;
+  }
+}
+
+/* The session-pane reveal (slide + fade) is intentionally exempt from
+ * prefers-reduced-motion: it is a short, non-vestibular horizontal slide that
+ * users explicitly requested. The JS gate in renderer.js mirrors this. */

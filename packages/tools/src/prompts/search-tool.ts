@@ -1,0 +1,1 @@
+export const description = "Search the deferred-tool catalog by capability or exact name. Results include the tool name, summary, and top-level parameters. Use English capability words for best recall, then call the matched tool on the next turn. If you already know its exact name, call it directly.";

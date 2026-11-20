@@ -1,0 +1,157 @@
+{
+  "name": "reina",
+  "version": "0.0.25",
+  "private": true,
+  "type": "module",
+  "license": "AGPL-3.0-only",
+  "author": "7-e1even",
+  "description": "Local-first desktop AI agent — your data never leaves your machine.",
+  "homepage": "https://github.com/Reina-Agent/Reina#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Reina-Agent/Reina.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Reina-Agent/Reina/issues"
+  },
+  "main": "dist/apps/desktop/main.js",
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "check": "tsc -b",
+    "check:stale": "node scripts/check-stale-dist.mjs",
+    "test": "vitest run",
+    "build": "tsc -b",
+    "build:desktop": "npm run build && npm run build --workspace=@reina/agent-host && npm run build --workspace=@reina/desktop",
+    "dist:desktop": "npm run build:desktop && electron-builder",
+    "dist:desktop:win": "npm run build:desktop && electron-builder --win nsis",
+    "dist:desktop:win:portable": "npm run build:desktop && electron-builder --win portable",
+    "dist:desktop:mac": "npm run build:desktop && electron-builder --mac dmg zip",
+    "package:release": "node scripts/package-release.mjs",
+    "release": "node scripts/release.mjs",
+    "desktop": "npm run build:desktop && npm run dev --workspace=@reina/desktop",
+    "dev": "npm run desktop",
+    "start": "npm run desktop",
+    "doctor": "npx react-doctor@latest",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check ."
+  },
+  "build": {
+    "appId": "app.reina.desktop",
+    "productName": "Reina",
+    "icon": "build/icon",
+    "publish": [
+      {
+        "provider": "github",
+        "owner": "Reina-Agent",
+        "repo": "Reina"
+      }
+    ],
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "afterPack": "scripts/after-pack-sign.cjs",
+    "directories": {
+      "output": "release"
+    },
+    "npmRebuild": false,
+    "toolsets": {
+      "winCodeSign": "1.1.0"
+    },
+    "files": [
+      "package.json",
+      "build/icon.*",
+      "dist/apps/desktop/**",
+      "dist/packages/agent-host/**",
+      "node_modules/node-pty/**",
+      "node_modules/@vscode/ripgrep/**",
+      "node_modules/@vscode/ripgrep-*/**"
+    ],
+    "asarUnpack": [
+      "dist/packages/agent-host/**",
+      "node_modules/node-pty/**",
+      "node_modules/@vscode/ripgrep/**",
+      "node_modules/@vscode/ripgrep-*/**"
+    ],
+    "win": {
+      "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+      "signExts": [
+        "!.exe"
+      ],
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "perMachine": false
+    },
+    "portable": {
+      "artifactName": "${productName}-${version}-portable-${arch}.${ext}"
+    },
+    "mac": {
+      "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+      "identity": null,
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        },
+        {
+          "target": "zip",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
+      "category": "public.app-category.developer-tools"
+    }
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.122.0",
+    "@modelcontextprotocol/sdk": "^1.29.0",
+    "@vscode/ripgrep": "^1.18.0",
+    "diff": "^7.0.0",
+    "execa": "^9.5.2",
+    "fast-glob": "^3.3.3",
+    "node-pty": "^1.1.0",
+    "openai": "^7.8.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.4",
+    "@types/diff": "^7.0.2",
+    "@types/node": "^22.10.2",
+    "electron-builder": "^26.8.1",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^9.1.2",
+    "prettier": "^3.8.3",
+    "tsup": "^8.3.5",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.60.0",
+    "vitest": "^2.1.8"
+  },
+  "optionalDependencies": {
+    "lightningcss-darwin-arm64": "^1.32.0",
+    "lightningcss-darwin-x64": "^1.32.0",
+    "lightningcss-linux-arm64-gnu": "^1.32.0",
+    "lightningcss-linux-x64-gnu": "^1.32.0",
+    "lightningcss-win32-arm64-msvc": "^1.32.0",
+    "lightningcss-win32-x64-msvc": "^1.32.0"
+  }
+}

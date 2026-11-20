@@ -1,0 +1,400 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Thinking Status Color Demo</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101010;
+      --panel: #171717;
+      --panel-2: #1e1e1e;
+      --border: #2b2b2b;
+      --text: #e6e6e6;
+      --muted: #a7a7a7;
+      --faint: #747474;
+      --warning: #d7b46a;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 50% 100%, rgba(120, 54, 42, 0.20), transparent 32%),
+        var(--bg);
+      color: var(--text);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 32px;
+    }
+
+    main {
+      max-width: 1040px;
+      margin: 0 auto;
+    }
+
+    header {
+      display: flex;
+      align-items: end;
+      justify-content: space-between;
+      gap: 16px;
+      margin-bottom: 22px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: 20px;
+      font-weight: 650;
+      letter-spacing: 0;
+    }
+
+    .selected {
+      color: var(--muted);
+      font-size: 13px;
+      white-space: nowrap;
+    }
+
+    .stage {
+      border: 1px solid var(--border);
+      background: rgba(20, 20, 20, 0.78);
+      border-radius: 8px;
+      padding: 22px;
+      margin-bottom: 18px;
+    }
+
+    .mock-timeline {
+      min-height: 104px;
+      display: grid;
+      place-items: center;
+      border-radius: 6px;
+      background:
+        linear-gradient(180deg, rgba(255,255,255,0.018), transparent 48%),
+        #101010;
+      box-shadow: inset 0 -24px 42px rgba(98, 40, 30, 0.18);
+    }
+
+    .thinking-line {
+      display: inline-flex;
+      align-items: baseline;
+      gap: 8px;
+      font-size: 14px;
+      line-height: 1.4;
+      color: var(--muted);
+    }
+
+    .glyph {
+      display: inline-block;
+      width: 1.1em;
+      text-align: center;
+      color: var(--glyph);
+      font-size: 16px;
+      font-weight: 650;
+      animation: pulse 1.4s ease-in-out infinite;
+    }
+
+    .word {
+      color: var(--word);
+      font-weight: 500;
+    }
+
+    .word::after {
+      content: "";
+      display: inline-block;
+      width: 1px;
+      height: 1em;
+      margin-left: 2px;
+      vertical-align: -0.12em;
+      background: var(--caret);
+      opacity: 0.85;
+      animation: blink 720ms steps(1, end) infinite;
+    }
+
+    .meta {
+      color: var(--meta);
+      font-size: 12px;
+    }
+
+    .slow .meta { color: var(--slow); }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .scheme {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      border-radius: 8px;
+      padding: 14px;
+      cursor: pointer;
+    }
+
+    .scheme:hover,
+    .scheme.is-selected {
+      border-color: color-mix(in srgb, var(--glyph), var(--border) 35%);
+      background: var(--panel-2);
+    }
+
+    .scheme-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    .name {
+      font-size: 13px;
+      font-weight: 650;
+    }
+
+    .tag {
+      color: var(--faint);
+      font-size: 12px;
+    }
+
+    .swatches {
+      display: flex;
+      gap: 5px;
+    }
+
+    .swatch {
+      width: 14px;
+      height: 14px;
+      border: 1px solid rgba(255,255,255,0.14);
+      border-radius: 50%;
+      background: var(--c);
+    }
+
+    .scheme .thinking-line {
+      display: flex;
+      min-height: 28px;
+      padding: 6px 0;
+    }
+
+    .sample-pair {
+      display: grid;
+      gap: 2px;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.55; transform: scale(1); }
+      50% { opacity: 1; transform: scale(1.15); }
+    }
+
+    @keyframes blink {
+      0%, 48% { opacity: 0.85; }
+      49%, 100% { opacity: 0; }
+    }
+
+    @media (max-width: 760px) {
+      body { padding: 18px; }
+      header { align-items: start; flex-direction: column; }
+      .grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Thinking status color options</h1>
+      <div class="selected" id="selected">Selected: Electric blue</div>
+    </header>
+
+    <section class="stage" id="preview" style="--glyph:#5ea7ff;--word:#d8eaff;--meta:#8da6bf;--caret:#5ea7ff;--slow:#f0b75a;">
+      <div class="mock-timeline">
+        <div class="thinking-line">
+          <span class="glyph js-glyph">✦</span>
+          <span class="word">Hatching...</span>
+          <span class="meta">(14s · esc to interrupt)</span>
+        </div>
+      </div>
+    </section>
+
+    <section class="grid" id="schemes">
+      <article class="scheme is-selected" data-name="Electric blue" style="--glyph:#5ea7ff;--word:#d8eaff;--meta:#8da6bf;--caret:#5ea7ff;--slow:#f0b75a;">
+        <div class="scheme-head">
+          <div><div class="name">Electric blue</div><div class="tag">明显、干净，状态感最强</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#5ea7ff"></span><span class="swatch" style="--c:#d8eaff"></span><span class="swatch" style="--c:#8da6bf"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+
+      <article class="scheme" data-name="Signal cyan" style="--glyph:#35d7ff;--word:#d6f8ff;--meta:#7bb6c2;--caret:#35d7ff;--slow:#f4bb5f;">
+        <div class="scheme-head">
+          <div><div class="name">Signal cyan</div><div class="tag">更亮一点，有终端感</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#35d7ff"></span><span class="swatch" style="--c:#d6f8ff"></span><span class="swatch" style="--c:#7bb6c2"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+
+      <article class="scheme" data-name="Amber pulse" style="--glyph:#ffbf47;--word:#ffe2a3;--meta:#a9894e;--caret:#ffbf47;--slow:#ff9f43;">
+        <div class="scheme-head">
+          <div><div class="name">Amber pulse</div><div class="tag">醒目，接近原本黄字但更有力</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#ffbf47"></span><span class="swatch" style="--c:#ffe2a3"></span><span class="swatch" style="--c:#a9894e"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+
+      <article class="scheme" data-name="Lime signal" style="--glyph:#b7f25f;--word:#e6ffc1;--meta:#9ab66f;--caret:#b7f25f;--slow:#ffbd5b;">
+        <div class="scheme-head">
+          <div><div class="name">Lime signal</div><div class="tag">最活跃，但会更像运行指示灯</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#b7f25f"></span><span class="swatch" style="--c:#e6ffc1"></span><span class="swatch" style="--c:#9ab66f"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+
+      <article class="scheme" data-name="Coral spark" style="--glyph:#ff7b72;--word:#ffd0cc;--meta:#ad807b;--caret:#ff7b72;--slow:#ffb85a;">
+        <div class="scheme-head">
+          <div><div class="name">Coral spark</div><div class="tag">暖色、明显，和底部红光呼应</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#ff7b72"></span><span class="swatch" style="--c:#ffd0cc"></span><span class="swatch" style="--c:#ad807b"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+
+      <article class="scheme" data-name="Violet neon" style="--glyph:#b68cff;--word:#eadcff;--meta:#9480b8;--caret:#b68cff;--slow:#f0b75a;">
+        <div class="scheme-head">
+          <div><div class="name">Violet neon</div><div class="tag">更有 AI 感，但没有彩虹那么花</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#b68cff"></span><span class="swatch" style="--c:#eadcff"></span><span class="swatch" style="--c:#9480b8"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+
+      <article class="scheme" data-name="Cool slate" style="--glyph:#8aa0b8;--word:#c4ccd6;--meta:#7f8790;--caret:#8aa0b8;--slow:#d0aa63;">
+        <div class="scheme-head">
+          <div><div class="name">Cool slate</div><div class="tag">冷灰蓝，克制但有状态感</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#8aa0b8"></span><span class="swatch" style="--c:#c4ccd6"></span><span class="swatch" style="--c:#7f8790"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+
+      <article class="scheme" data-name="Neutral graphite" style="--glyph:#858585;--word:#b8b8b8;--meta:#747474;--caret:#9a9a9a;--slow:#c8a768;">
+        <div class="scheme-head">
+          <div><div class="name">Neutral graphite</div><div class="tag">纯中性，最不抢眼</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#858585"></span><span class="swatch" style="--c:#b8b8b8"></span><span class="swatch" style="--c:#747474"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+
+      <article class="scheme" data-name="Muted gold" style="--glyph:#c2a463;--word:#d2c4a5;--meta:#82765e;--caret:#c2a463;--slow:#d6b56f;">
+        <div class="scheme-head">
+          <div><div class="name">Muted gold</div><div class="tag">接近原图，但降低饱和度</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#c2a463"></span><span class="swatch" style="--c:#d2c4a5"></span><span class="swatch" style="--c:#82765e"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+
+      <article class="scheme" data-name="Sage" style="--glyph:#8faa99;--word:#bdcbbb;--meta:#758176;--caret:#8faa99;--slow:#ccb16c;">
+        <div class="scheme-head">
+          <div><div class="name">Sage</div><div class="tag">偏稳定、自然，不像成功绿</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#8faa99"></span><span class="swatch" style="--c:#bdcbbb"></span><span class="swatch" style="--c:#758176"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+
+      <article class="scheme" data-name="Steel cyan" style="--glyph:#7ba6ad;--word:#b9d0d3;--meta:#6f8589;--caret:#7ba6ad;--slow:#cfb06a;">
+        <div class="scheme-head">
+          <div><div class="name">Steel cyan</div><div class="tag">科技感更明显，但仍低饱和</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#7ba6ad"></span><span class="swatch" style="--c:#b9d0d3"></span><span class="swatch" style="--c:#6f8589"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+
+      <article class="scheme" data-name="Dust lavender" style="--glyph:#a89fba;--word:#cbc4d7;--meta:#817a8e;--caret:#a89fba;--slow:#ccb06e;">
+        <div class="scheme-head">
+          <div><div class="name">Dust lavender</div><div class="tag">柔和一点，但不是大面积紫色</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#a89fba"></span><span class="swatch" style="--c:#cbc4d7"></span><span class="swatch" style="--c:#817a8e"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+
+      <article class="scheme" data-name="Rose taupe" style="--glyph:#b3959d;--word:#d0bdc2;--meta:#867378;--caret:#b3959d;--slow:#d0ad66;">
+        <div class="scheme-head">
+          <div><div class="name">Rose taupe</div><div class="tag">暖灰粉，和底部暖色阴影协调</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#b3959d"></span><span class="swatch" style="--c:#d0bdc2"></span><span class="swatch" style="--c:#867378"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+
+      <article class="scheme" data-name="Soft high contrast" style="--glyph:#a6a6a6;--word:#d5d5d5;--meta:#858585;--caret:#b6b6b6;--slow:#d2b16c;">
+        <div class="scheme-head">
+          <div><div class="name">Soft high contrast</div><div class="tag">更清楚，适合小字号显示</div></div>
+          <div class="swatches"><span class="swatch" style="--c:#a6a6a6"></span><span class="swatch" style="--c:#d5d5d5"></span><span class="swatch" style="--c:#858585"></span></div>
+        </div>
+        <div class="sample-pair">
+          <div class="thinking-line"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(esc to interrupt)</span></div>
+          <div class="thinking-line slow"><span class="glyph js-glyph">✦</span><span class="word">Hatching...</span><span class="meta">(42s · taking longer than usual)</span></div>
+        </div>
+      </article>
+    </section>
+  </main>
+
+  <script>
+    const preview = document.querySelector("#preview");
+    const selected = document.querySelector("#selected");
+    const schemes = [...document.querySelectorAll(".scheme")];
+    const glyphs = ["✢", "✣", "✤", "✥", "✦", "✧", "✶", "✷", "✸", "✹", "✺", "✻"];
+    let glyphIndex = 0;
+
+    schemes.forEach((scheme) => {
+      scheme.addEventListener("click", () => {
+        schemes.forEach((item) => item.classList.remove("is-selected"));
+        scheme.classList.add("is-selected");
+        selected.textContent = `Selected: ${scheme.dataset.name}`;
+        ["--glyph", "--word", "--meta", "--caret", "--slow"].forEach((name) => {
+          preview.style.setProperty(name, scheme.style.getPropertyValue(name));
+        });
+      });
+    });
+
+    window.setInterval(() => {
+      glyphIndex = (glyphIndex + 1) % glyphs.length;
+      document.querySelectorAll(".js-glyph").forEach((glyph) => {
+        glyph.textContent = glyphs[glyphIndex];
+      });
+    }, 140);
+  </script>
+</body>
+</html>

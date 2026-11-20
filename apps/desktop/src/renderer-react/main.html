@@ -1,0 +1,76 @@
+<!doctype html>
+<!--
+  Main chat window — React port. This is a TECH-STACK SWAP ONLY: it reuses the
+  legacy chat stylesheets verbatim (./legacy-styles/*, copied post-build by
+  scripts/copy-legacy-chat-assets.cjs) and reproduces the exact legacy DOM
+  (same classes/ids), so the appearance and behavior match the legacy renderer.
+  The legacy source of truth is apps/desktop/src/renderer/main.html.
+-->
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: file: blob:; connect-src 'self'"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Reina</title>
+
+    <!-- FOUC guard: synchronously replay the last-applied appearance (mirrored
+         to localStorage by legacyAppearance.ts applyAppearance) before first
+         paint, so launch doesn't flash the default theme while the real
+         settings load over async IPC. Runs BEFORE the stylesheet loader so the
+         first styled paint already carries data-theme & fonts. -->
+    <script>
+      (function () {
+        try {
+          var m = JSON.parse(localStorage.getItem("reina:appearance-mirror:chat") || "null");
+          if (!m) return;
+          var root = document.documentElement;
+          var attrs = m.attrs || {};
+          for (var name in attrs) root.setAttribute(name, attrs[name]);
+          if (m.style) root.setAttribute("style", m.style);
+          var classes = m.classes || {};
+          for (var c in classes) root.classList.toggle(c, !!classes[c]);
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- Load the legacy chat stylesheets at runtime, in the exact order
+         main.html links them. They are copied next to this file post-build, so
+         Vite never sees them as build inputs (it would fail to resolve them).
+         Synchronous append in <head> keeps them ahead of first paint. -->
+    <script>
+      (function () {
+        var sheets = [
+          "base.css",
+          "themes.css",
+          "topbar.css",
+          "resize.css",
+          "sidebar.css",
+          "task-pane.css",
+          "hljs-theme.css",
+          "chat.css",
+          "subagent-chips.css",
+          "composer.css",
+          "hitl.css",
+          "palette.css",
+          "responsive.css",
+          "style.css",
+          "glass.css",
+        ];
+        var head = document.head;
+        for (var i = 0; i < sheets.length; i++) {
+          var link = document.createElement("link");
+          link.rel = "stylesheet";
+          link.href = "./legacy-styles/" + sheets[i];
+          head.appendChild(link);
+        }
+      })();
+    </script>
+  </head>
+  <body data-window="main">
+    <div id="root"></div>
+    <script type="module" src="/src/entries/main.tsx"></script>
+  </body>
+</html>

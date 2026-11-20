@@ -1,0 +1,1 @@
+export const description = "Stop a running async task. Idempotent (no-op on terminal tasks). Use when the child is off-track or its result is no longer needed. Worktree cleanup follows the same rule as normal settlement.";

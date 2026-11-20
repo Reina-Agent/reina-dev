@@ -1,0 +1,376 @@
+.topbar {
+  grid-column: 1 / -1;
+  grid-row: 1;
+  position: relative;
+  z-index: 30;
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  height: var(--topbar-height);
+  background: transparent;
+  border-bottom: 0;
+  padding: 0;
+  overflow: visible;
+  pointer-events: none;
+  -webkit-app-region: drag;
+}
+
+.toolbar,
+.topbar-actions,
+.topbar-start,
+.topbar-end {
+  display: flex;
+  gap: 1px;
+  align-items: center;
+}
+
+.topbar-start {
+  align-self: stretch;
+  padding-left: 8px;
+  gap: 4px;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+
+.topbar-start .title-icon-button {
+  width: 30px;
+  height: 28px;
+  min-width: 30px;
+  border-radius: var(--r-md);
+}
+
+body:not([data-window="main"]) #topbar-new-session {
+  display: none;
+}
+
+body:not([data-window="main"]) #toggle-rail,
+body:not([data-window="main"]) #topbar-search {
+  display: none;
+}
+
+body[data-window="sidebar"] #topbar-quick-new-session {
+  display: none;
+}
+
+.topbar-title-wrap {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  width: min(360px, calc(100% - 360px));
+  min-width: 0;
+  height: 100%;
+  padding: 0 12px;
+  pointer-events: none;
+}
+
+.topbar-title {
+  margin: 0;
+  min-width: 0;
+  flex-shrink: 1;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--text-strong);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  user-select: none;
+}
+
+.topbar-title-wrap .chat-header-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  flex-shrink: 1;
+}
+
+.topbar-end {
+  position: relative;
+  flex-shrink: 0;
+  justify-self: end;
+  align-self: stretch;
+  padding-right: 0;
+  gap: 6px;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+
+.topbar-end .topbar-workspace-toggle {
+  align-self: center;
+  width: 28px;
+  height: 26px;
+  min-width: 28px;
+  border-radius: var(--r-md);
+}
+
+.window-controls .window-control {
+  height: 100%;
+  min-width: 46px;
+  border-radius: 0;
+  padding: 0;
+}
+
+.topbar-start .title-icon-button,
+.topbar-end .topbar-workspace-toggle {
+  align-self: center;
+  width: 30px;
+  height: 28px;
+  min-width: 30px;
+  border-radius: var(--r-md);
+  padding: 0;
+}
+
+.window-controls {
+  display: flex;
+  align-self: stretch;
+  -webkit-app-region: no-drag;
+}
+
+.window-control {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0;
+  border-radius: 0;
+}
+
+.window-control .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.window-control:hover {
+  background: color-mix(in srgb, var(--panel-hover) 82%, transparent);
+  color: var(--text);
+}
+
+.window-control:active {
+  background: var(--panel-active);
+}
+
+.window-control-close:hover {
+  background: #e81123;
+  color: #ffffff;
+}
+
+.window-control-close:active {
+  background: #c50f1f;
+  color: #ffffff;
+}
+
+/* ── macOS: native traffic lights replace our custom window buttons ──
+   With titleBarStyle:"hidden", macOS still draws the red/yellow/green controls
+   top-left. Hide our Windows-style min/max/close to avoid a duplicate set. */
+body[data-os="mac"] .window-controls {
+  display: none;
+}
+
+/* Push left-edge controls clear of the traffic lights. Settings/workspace
+   windows keep .topbar-start in normal flow, so padding works there. Left
+   unguarded (it's a no-op on the absolute-positioned main window and is
+   out-specified by the sidebar's own padding:0 — the fullscreen guard lives on
+   the main-window left rules below, which are what actually reserve the strip). */
+body[data-os="mac"] .topbar-start {
+  padding-left: 80px;
+}
+
+/* The main window positions .topbar-start absolutely with padding:0 (style.css),
+   so padding has no effect — shift its `left` past the traffic lights instead,
+   in both collapsed and expanded sidebar states. Higher specificity than the
+   style.css rules it overrides. The :not([data-fullscreen]) guard drops the
+   reserve in fullscreen — macOS hides the lights there, so the strip would be a
+   dead gap — letting style.css's baseline left (8px / sidebar inset) take over. */
+body[data-os="mac"]:not([data-fullscreen])[data-window="main"] .app.session-collapsed .topbar-start {
+  left: 80px;
+}
+
+body[data-os="mac"]:not([data-fullscreen])[data-window="main"] .app:not(.session-collapsed) .topbar-start {
+  left: max(80px, calc(var(--main-shell-inset) + var(--main-sidebar-padding)));
+}
+
+.topbar button,
+.topbar input,
+.topbar [role="button"],
+.topbar [role="menu"],
+.topbar * {
+  -webkit-app-region: no-drag;
+}
+
+.topbar .topbar-title-wrap,
+.topbar .topbar-title-wrap .topbar-title,
+.topbar .topbar-title-wrap .chat-header-meta,
+.topbar .topbar-title-wrap .chat-header-meta .chat-chip {
+  -webkit-app-region: drag;
+}
+
+.toolbar {
+  display: none;
+}
+
+/* Native current-conversation menu trigger. Electron owns the popup so nested
+   panels can extend beyond the BrowserWindow edge. */
+.open-with-control {
+  position: relative;
+  display: inline-flex;
+  align-self: center;
+  align-items: center;
+  height: 28px;
+  width: 30px;
+  margin: 0 8px 0 4px;
+  border-radius: var(--r-md);
+  background: transparent;
+  -webkit-app-region: no-drag;
+  transition: background-color 120ms ease;
+}
+
+.open-with-control:hover {
+  background: var(--panel-hover);
+}
+
+.open-with-toggle {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 28px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  padding: 0;
+  cursor: pointer;
+  border-radius: var(--r-md);
+  color: var(--text-muted);
+}
+
+.open-with-toggle:hover {
+  background: color-mix(in srgb, var(--panel-hover) 70%, transparent);
+}
+
+.open-with-toggle .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.title-icon-button,
+.menu-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 26px;
+  min-width: 26px;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  border-radius: var(--r-sm);
+}
+
+.title-icon-button {
+  padding: 0 6px;
+}
+
+.menu-button {
+  padding: 0 9px;
+  letter-spacing: 0.01em;
+}
+
+.title-icon-button:hover,
+.menu-button:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.title-icon-button.active {
+  background: var(--panel-active);
+  color: var(--text-strong);
+}
+
+.title-icon-button .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.topbar-end .topbar-workspace-toggle {
+  width: 30px;
+  min-width: 30px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text);
+}
+
+.topbar-end .topbar-workspace-toggle:hover {
+  border-color: var(--line-strong);
+  background: var(--panel-hover);
+  color: var(--text-strong);
+}
+
+.topbar-workspace-label {
+  line-height: 1;
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+
+@media (max-width: 860px) {
+  .topbar-title-wrap {
+    width: min(280px, calc(100% - 260px));
+  }
+}
+
+body[data-window="workspace"] .topbar-end .topbar-workspace-toggle {
+  width: 30px;
+  min-width: 30px;
+  padding: 0;
+  border-color: transparent;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+body[data-window="workspace"] .topbar-workspace-label {
+  display: none;
+}
+
+/* Tiny ghost button (e.g. file menu, panel '+') */
+.ghost-button,
+.icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border: 1px solid transparent;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.ghost-button:hover,
+.icon-button:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.ghost-button.active,
+.icon-button.active {
+  background: var(--panel-active);
+  color: var(--text-strong);
+}
+
+.ghost-button .icon,
+.icon-button .icon {
+  width: 14px;
+  height: 14px;
+}

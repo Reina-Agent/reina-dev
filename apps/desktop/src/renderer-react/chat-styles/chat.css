@@ -1,0 +1,3049 @@
+/* =============================================================================
+ * chat.css — Reina conversation timeline
+ *
+ * Design language: "Inline log".
+ *
+ *   The conversation is a long quiet document. Two visual containers exist;
+ *   nothing else should grow chrome:
+ *
+ *   1. BORDERED BOX (tool calls, reasoning, subagent, permission).
+ *      A 1px hairline border + soft fill, rounded corners. The whole entry
+ *      — header row, body content — sits inside one box, the way a CLI
+ *      tool prints a result block. Border color is tinted by status
+ *      (danger / warning / accent); a single failure or approval stops the
+ *      eye. Subagent uses an accent-tinted border to read as a child branch.
+ *
+ *   2. LEFT RAIL (reserved for top-alarm entries).
+ *      A 3px colored rail (`--rail`) carries the signal. Only .error-entry
+ *      uses it now — the rail + soft red fill combo is the loudest
+ *      containment in the system, kept for failures that must not be missed.
+ *
+ *   Everything else stays flat. Tool calls in resting state are a single
+ *   un-chromed row; assistant prose is left-flush text; user messages are
+ *   a small right-aligned bubble.
+ *
+ * Renderer contract (do not break without coordinating with conversation.js
+ * / tool-blocks.js / actions/timeline.js):
+ *   .tool-call-summary is a 5-child grid: icon · title · target · meta · status.
+ *   .tool-target is a wrapper around .tool-subtitle + .tool-args.
+ *   The grid template MUST put title in `auto` and target in `minmax(0, 1fr)`;
+ *   reversing them causes title↔subtitle overlap on long subtitles.
+ * ========================================================================== */
+
+/* ---------- Pane shell --------------------------------------------------- */
+
+.chat-pane {
+  /* Entries fill the fluid content column. task-pane.css caps that column at
+   * its reading width and only narrows it when an expanded task panel docks. */
+  --chat-content-max-width: 100%;
+  --chat-content-width: 100%;
+  /* The timeline reserves a horizontal frame the message column sits inside:
+   * its own side padding (--chat-pad-x) plus the stable scrollbar gutter
+   * (both-edges) sized from base.css's 10px ::-webkit-scrollbar. Siblings that
+   * live OUTSIDE the scrolling timeline — the composer and the hitl dock —
+   * subtract the same frame so their box edges land on the exact same x as the
+   * centered messages at any window width. */
+  /* Fluid side padding: ramps 10px → 22px with window width via clamp, so the
+   * message column AND the composer (both derived from it below) scale as one
+   * continuous block — no snap when crossing the old 720px breakpoint. */
+  --chat-pad-x: clamp(10px, 3vw - 7px, 22px);
+  --chat-scrollbar: 10px;
+  --chat-aligned-width: calc(
+    100% - (var(--chat-pad-x) + var(--chat-scrollbar)) * 2
+  );
+  /* Width of the colored signal rail on the left of railed entries. */
+  --rail: 3px;
+
+  grid-column: 3;
+  grid-row: 1;
+  position: relative;
+  isolation: isolate;
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  overflow: hidden;
+  min-width: 0;
+  min-height: 0;
+}
+
+.chat-pane > .timeline       { position: relative; flex: 1; min-height: 0; z-index: 1; }
+.chat-pane > .composer       { position: relative; flex-shrink: 0; z-index: 2; }
+.chat-pane > .hitl-dock      { position: relative; flex-shrink: 0; z-index: 2; }
+
+.chat-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 20px;
+  max-width: 220px;
+  padding: 0 8px;
+  border-radius: var(--r-pill);
+  background: var(--panel-soft);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chat-chip:empty { display: none; }
+
+.chat-chip.deterministic,
+.chat-chip.read-only {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.chat-chip-usage {
+  font-variant-numeric: tabular-nums;
+  cursor: help;
+}
+
+/* ---------- Host crash banner ------------------------------------------- */
+
+.host-crash-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--danger-border);
+  background: var(--danger-soft);
+  color: var(--danger-text);
+  font-size: var(--fs-sm);
+}
+
+.host-crash-banner[hidden] { display: none; }
+
+.host-crash-banner .icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+  color: var(--danger);
+}
+
+.host-crash-text {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ---------- Auto-update popup (floating card, bottom-right) ------------- */
+
+.update-toast {
+  position: fixed;
+  /* Centered both axes via auto margins on a fixed box; dragging switches to
+     explicit left/top (see .is-dragged). */
+  inset: 0;
+  margin: auto;
+  z-index: 60;
+  width: 320px;
+  max-width: calc(100vw - 40px);
+  height: max-content;
+  max-height: calc(100vh - 40px);
+  padding: 14px 16px;
+  border-radius: 14px;
+  /* Frosted glass: translucent fill so the blurred backdrop shows through,
+     a hairline light rim, and a soft drop shadow + inner top highlight. */
+  background: color-mix(in srgb, var(--panel-elevated, var(--panel)) 64%, transparent);
+  backdrop-filter: blur(22px) saturate(1.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  border: 1px solid color-mix(in srgb, var(--text) 14%, transparent);
+  box-shadow:
+    0 16px 48px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 color-mix(in srgb, #fff 12%, transparent);
+  color: var(--text);
+  font-size: var(--fs-sm);
+  cursor: move;
+  user-select: none;
+}
+
+/* Dragged: release the auto-centering and position by explicit left/top. */
+.update-toast.is-dragged {
+  inset: auto;
+  margin: 0;
+}
+
+/* Interactive bits keep their own cursor (don't show the move cursor). */
+.update-toast button {
+  cursor: pointer;
+}
+
+.update-toast {
+  animation: update-toast-in 220ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes update-toast-in {
+  from { opacity: 0; transform: translateY(12px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.update-toast-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 11px;
+}
+
+.update-toast-icon {
+  flex-shrink: 0;
+  width: 30px;
+  height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.update-toast-icon.is-ready {
+  background: color-mix(in srgb, #22c55e 18%, transparent);
+  color: #22c55e;
+}
+
+.update-toast-icon.is-error {
+  background: color-mix(in srgb, #ef4444 18%, transparent);
+  color: #ef4444;
+}
+
+.update-toast-icon svg {
+  width: 16px;
+  height: 16px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.update-toast-text {
+  flex: 1;
+  min-width: 0;
+  padding-right: 14px;
+}
+
+.update-toast-title {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-weight: 600;
+  color: var(--text-strong, var(--text));
+}
+
+.update-toast-ver {
+  font-weight: 500;
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.update-toast-sub {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.update-toast-progress {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.update-toast-bar {
+  flex: 1;
+  height: 5px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--text-muted) 22%, transparent);
+  overflow: hidden;
+}
+
+.update-toast-bar-fill {
+  height: 100%;
+  width: 0;
+  border-radius: inherit;
+  background: var(--accent);
+  transition: width 200ms ease;
+}
+
+/* Connecting / waiting for the first byte: a sweeping segment so the bar reads
+   as "working", not "stuck at 0%". Shared with the sidebar badge fill — one
+   sweep for every update-progress surface. */
+.update-toast-bar-fill.is-indeterminate {
+  width: 35%;
+  transition: none;
+  animation: update-progress-sweep 1.1s ease-in-out infinite;
+}
+
+@keyframes update-progress-sweep {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(330%); }
+}
+
+.update-toast-pct {
+  flex-shrink: 0;
+  min-width: 34px;
+  text-align: right;
+  font-size: 11px;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.update-toast-action {
+  margin-top: 12px;
+  width: 100%;
+  padding: 7px 12px;
+  border: 0;
+  border-radius: 8px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.update-toast-action:hover {
+  background: color-mix(in srgb, var(--accent) 88%, var(--accent-contrast));
+}
+
+.update-toast-dismiss {
+  position: absolute;
+  top: 9px;
+  right: 9px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--text-muted);
+  opacity: 0.7;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+
+.update-toast-dismiss:hover {
+  opacity: 1;
+  background: color-mix(in srgb, var(--text-muted) 16%, transparent);
+}
+
+/* Small "更新" badge in the sidebar footer (Codex-style). Sits in
+   .session-footer-actions, just left of the settings gear (where the old "Open"
+   button used to be). Only renders when there's an update to surface. */
+.sidebar-update-badge {
+  position: relative;
+  flex-shrink: 0;
+  padding: 2px 9px;
+  border: 0;
+  border-radius: 999px;
+  background: var(--accent);
+  color: var(--accent-contrast);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.55;
+  cursor: pointer;
+  overflow: hidden;
+}
+
+.sidebar-update-badge:hover {
+  background: color-mix(in srgb, var(--accent) 86%, var(--accent-contrast));
+}
+
+.sidebar-update-badge.is-ready {
+  background: #22c55e;
+  color: #06230f;
+}
+
+.sidebar-update-badge.is-ready:hover {
+  background: color-mix(in srgb, #22c55e 88%, #000);
+}
+
+.sidebar-update-badge.is-error {
+  background: #ef4444;
+  color: #fff;
+}
+
+.sidebar-update-badge.is-error:hover {
+  background: color-mix(in srgb, #ef4444 88%, #000);
+}
+
+/* Downloading: a status pill, not a button — flatten the track and let the
+   fill report progress behind the % label. */
+.sidebar-update-badge.is-downloading {
+  background: color-mix(in srgb, var(--accent) 22%, transparent);
+  color: var(--text);
+  cursor: default;
+  font-variant-numeric: tabular-nums;
+}
+
+.sidebar-update-badge-fill {
+  position: absolute;
+  inset: 0;
+  width: 0;
+  border-radius: inherit;
+  background: color-mix(in srgb, var(--accent) 60%, transparent);
+  transition: width 180ms ease-out;
+}
+
+/* No byte yet (connecting / waiting for headers): sweep so it never looks stuck.
+   Keyframes are shared with .update-toast-bar-fill (see the update toast
+   section above). */
+.sidebar-update-badge-fill.is-indeterminate {
+  width: 40%;
+  animation: update-progress-sweep 1.1s ease-in-out infinite;
+}
+
+.sidebar-update-badge-label {
+  position: relative;
+}
+
+/* ---------- Timeline scroll container ----------------------------------- */
+
+.timeline {
+  overflow: auto;
+  scrollbar-gutter: stable both-edges;
+  scroll-padding: 44px 0 120px;
+  padding: clamp(34px, 7vh, 56px) var(--chat-pad-x) 26px;
+}
+
+.timeline-content-column {
+  width: 100%;
+  margin-inline: auto;
+  transform: translateX(0);
+  transition: width 150ms ease-out, max-width 150ms ease-out, transform 150ms ease-out;
+}
+
+.history-loader {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 14px;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+
+/* ---------- Entry base --------------------------------------------------- *
+ * Every .entry variant (user, assistant, tool-call, thinking-entry,
+ * error-entry, permission) shares this centered column geometry. Variants
+ * below override margin / alignment / width as needed. */
+
+.entry {
+  width: var(--chat-content-width);
+  max-width: var(--chat-content-max-width);
+  margin: 0 auto 8px;
+  line-height: 1.5;
+  font-size: var(--fs-base);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
+  /* The timeline renders the WHOLE conversation (no virtualization), so any
+   * layout/paint that touches it — e.g. the chat column resizing while the
+   * sidebar slides — costs O(all messages) and stutters. content-visibility:auto
+   * lets the browser skip layout AND paint for off-screen entries (a cheap
+   * stand-in for virtualization); contain-intrinsic-size keeps scroll height
+   * stable, with `auto` remembering each entry's last real size. */
+  content-visibility: auto;
+  contain-intrinsic-size: auto 120px;
+}
+
+/* ---------- User message (right-aligned media + bubble stack) ----------- *
+ * Fit-content stack capped at 78% of the column and pinned to the right. The
+ * text bubble is a child so attached images can sit above it without picking
+ * up the bubble background. */
+
+.entry.user {
+  position: relative;
+  width: fit-content;
+  max-width: min(78%, var(--chat-content-max-width));
+  /* Pin the stack's right edge to the same x-coordinate where assistant
+   * content and tool calls end — i.e. the right edge of the centered 720px
+   * column — instead of letting it float out to the timeline's padding box.
+   * The calc resolves to the side gutter between the timeline and the
+   * centered column, collapsing to 0 on narrow viewports. */
+  margin: 22px max(0px, calc((100% - var(--chat-content-max-width)) / 2)) 4px auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+}
+
+.user-message-body {
+  min-width: 0;
+  max-width: 100%;
+  padding: 8px 13px;
+  border: 0;
+  border-radius: 11px;
+  background: var(--sent-bubble-color);
+  color: var(--sent-bubble-text);
+  box-shadow: none;
+}
+
+.user-skills {
+  align-self: flex-end;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 4px;
+  max-width: 100%;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.user-skills-label {
+  color: var(--text-faint);
+}
+
+.user-skill-chip {
+  max-width: 180px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--accent);
+}
+
+.user-message-actions {
+  align-self: flex-end;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  min-height: 22px;
+  padding: 0 3px;
+  color: var(--text-faint);
+  font-size: 12px;
+  line-height: 1;
+  opacity: 0.74;
+  transition: opacity 120ms ease;
+}
+
+.entry.user:hover .user-message-actions,
+.entry.user:focus-within .user-message-actions {
+  opacity: 1;
+}
+
+.user-message-time {
+  order: 2;
+  color: color-mix(in srgb, var(--text-muted) 78%, var(--text-faint));
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  line-height: 22px;
+  user-select: none;
+}
+
+.message-rollback-button { order: 1; }
+.message-copy-button { order: 3; }
+.message-edit-button { order: 4; }
+
+.message-rollback-button,
+.message-copy-button,
+.message-edit-button {
+  position: relative;
+  width: 22px;
+  height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.86;
+  box-shadow: none;
+  transition: opacity 120ms ease, background-color 120ms ease, color 120ms ease, transform 120ms ease;
+}
+
+.message-rollback-button::before,
+.message-copy-button::before,
+.message-edit-button::before {
+  content: "";
+  position: absolute;
+  inset: -5px;
+  border-radius: 8px;
+}
+
+.message-rollback-button:hover,
+.message-rollback-button:focus-visible,
+.message-copy-button:hover,
+.message-copy-button:focus-visible,
+.message-edit-button:hover,
+.message-edit-button:focus-visible {
+  opacity: 1;
+  transform: translateY(-1px);
+  background: color-mix(in srgb, var(--panel-hover) 76%, transparent);
+  color: var(--text-strong);
+}
+
+.message-rollback-button:active,
+.message-copy-button:active,
+.message-edit-button:active {
+  transform: translateY(0);
+}
+
+.message-rollback-button:disabled,
+.message-copy-button:disabled,
+.message-edit-button:disabled {
+  cursor: default;
+  opacity: 0.55;
+}
+
+.message-copy-button.is-copied {
+  color: var(--accent);
+}
+
+.message-copy-button.is-failed {
+  color: var(--danger);
+}
+
+.message-rollback-button .icon,
+.message-copy-button .icon,
+.message-edit-button .icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Compact text action used by the selection popover. */
+.assistant-context-action {
+  min-height: 24px;
+  padding: 0 8px;
+  border: 1px solid color-mix(in srgb, var(--line) 78%, transparent);
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--panel) 82%, transparent);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 12px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.assistant-context-action:hover,
+.assistant-context-action:focus-visible {
+  border-color: color-mix(in srgb, var(--text-faint) 55%, var(--line));
+  background: var(--panel-hover);
+  color: var(--text-strong);
+}
+
+.assistant-selection-actions {
+  position: fixed;
+  z-index: 1300;
+  display: flex;
+  gap: 0;
+  padding: 1px 2px;
+  border: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+  box-shadow: 0 6px 18px rgb(0 0 0 / 18%);
+  backdrop-filter: blur(12px);
+}
+
+.assistant-selection-actions .assistant-context-action {
+  border-color: transparent;
+  background: transparent;
+}
+
+.assistant-selection-actions .assistant-context-action + .assistant-context-action {
+  border-left-color: color-mix(in srgb, var(--line) 78%, transparent);
+  border-top-left-radius: 0;
+  border-bottom-left-radius: 0;
+}
+
+/* Hover action bar on model-output (assistant) messages: copy / branch /
+   delete buttons.
+   Fades in when the message is hovered or a button is focused. */
+.assistant-message-actions {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-top: 2px;
+  padding: 0 1px;
+  opacity: 0;
+  transition: opacity 120ms ease;
+}
+
+.entry.assistant:hover .assistant-message-actions,
+.assistant-message-actions:focus-within {
+  opacity: 1;
+}
+
+.assistant-action {
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text-faint);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.assistant-action:hover,
+.assistant-action:focus-visible {
+  color: var(--text-strong);
+  background: color-mix(in srgb, var(--panel-hover) 76%, transparent);
+}
+
+.assistant-action .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.assistant-action-delete:hover {
+  color: var(--danger);
+}
+
+.assistant-action-copy.is-copied {
+  color: var(--accent);
+}
+
+.assistant-action-info.is-open {
+  color: var(--text-strong);
+  background: color-mix(in srgb, var(--panel-hover) 76%, transparent);
+}
+
+/* True viewport overlay: rendered through a body portal so no chat ancestor
+   can measure, clip, or reserve space for the detail surface. */
+.assistant-meta-panel {
+  position: fixed;
+  z-index: 1400;
+  display: grid;
+  grid-template-columns: auto auto;
+  gap: 3px 18px;
+  min-width: 196px;
+  max-width: min(260px, calc(100vw - 16px));
+  max-height: 220px;
+  overflow: auto;
+  padding: 8px 11px;
+  border: 1px solid color-mix(in srgb, var(--line) 85%, transparent);
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--panel) 96%, transparent);
+  box-shadow: 0 8px 24px rgb(0 0 0 / 22%);
+  backdrop-filter: blur(12px);
+  font-size: 12px;
+  line-height: 1.3;
+  user-select: text;
+}
+
+.assistant-meta-panel[data-placement="above"] {
+  transform: translateY(-100%);
+}
+
+.assistant-meta-label {
+  color: var(--text-faint);
+}
+
+.assistant-meta-value {
+  text-align: right;
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* In-place editor shares one surface for the message and resend actions. */
+.entry.user.is-editing {
+  width: min(560px, 100%);
+  max-width: min(100%, var(--chat-content-max-width));
+}
+
+.user-edit {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  align-self: flex-end;
+  box-sizing: border-box;
+  border: 1px solid var(--composer-border);
+  border-radius: 16px;
+  background: var(--composer-bg);
+  white-space: normal;
+  transition: border-color 150ms ease;
+}
+
+.user-edit:focus-within {
+  border-color: color-mix(in srgb, var(--text-strong) 12%, var(--composer-border));
+}
+
+.user-edit-label {
+  margin: 0;
+  padding: 12px 14px 0;
+  color: var(--text-muted);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.user-edit-input {
+  width: 100%;
+  min-width: 0;
+  min-height: 72px;
+  max-height: 320px;
+  resize: none;
+  box-sizing: border-box;
+  padding: 10px 14px;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text-strong);
+  font: inherit;
+  line-height: 1.5;
+}
+
+.user-edit-input:focus,
+.user-edit-input:focus-visible {
+  outline: none;
+}
+
+.user-edit-actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 10px 10px;
+}
+
+.user-edit-hint {
+  flex: 1 1 180px;
+  min-width: 0;
+  margin-right: auto;
+  color: var(--text-faint);
+  font-size: 11px;
+  line-height: 1.5;
+}
+
+.user-edit-buttons {
+  display: inline-flex;
+  flex-shrink: 0;
+  gap: 8px;
+  margin-left: auto;
+}
+
+.user-edit-btn {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  height: 32px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--text-strong) 5%, transparent);
+  color: var(--text);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease, opacity 120ms ease;
+}
+
+.user-edit-btn:not(:disabled):hover {
+  color: var(--text-strong);
+  background: color-mix(in srgb, var(--text-strong) 9%, transparent);
+}
+
+.user-edit-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--text-strong) 65%, transparent);
+  outline-offset: 2px;
+}
+
+.user-edit-btn:disabled {
+  opacity: 0.4;
+}
+
+.user-edit-save {
+  color: var(--bg);
+  background: var(--text-strong);
+}
+
+.user-edit-save:not(:disabled):hover {
+  color: var(--bg);
+  background: color-mix(in srgb, var(--text-strong) 88%, var(--composer-bg));
+}
+
+.timeline-content-column > .entry.user:first-child {
+  margin-top: 0;
+}
+
+/* Inline attachment thumbnails. */
+.user-attachments {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  align-self: flex-end;
+  gap: 6px;
+  min-width: 0;
+  max-width: 100%;
+  margin: 0;
+}
+
+.user-attachments:first-child { margin-top: 0; }
+
+.user-attachment-image {
+  display: block;
+  max-width: min(220px, 100%);
+  max-height: 220px;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--line);
+  cursor: zoom-in;
+  transition: border-color 120ms ease, filter 120ms ease;
+}
+
+.user-attachment-image:hover {
+  border-color: var(--line-strong, var(--accent));
+  filter: brightness(1.06);
+}
+
+.image-lightbox {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  padding: 32px;
+  background: color-mix(in srgb, #000 72%, transparent);
+  cursor: zoom-out;
+  animation: image-lightbox-fade 120ms ease;
+}
+
+.image-lightbox-image {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--r-sm);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.5);
+  transform-origin: center center;
+  will-change: transform;
+  cursor: zoom-in;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+
+.image-lightbox-image.is-zoomed {
+  cursor: grab;
+}
+
+.image-lightbox-image.is-zoomed:active {
+  cursor: grabbing;
+}
+
+@keyframes image-lightbox-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.image-lightbox-toolbar {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--panel-elevated) 94%, transparent);
+  border: 1px solid var(--line-strong);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+  cursor: default;
+  z-index: 1;
+}
+
+.image-lightbox-tool {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.image-lightbox-tool:hover {
+  background: var(--panel-hover);
+}
+
+.image-lightbox-tool .icon {
+  width: 18px;
+  height: 18px;
+}
+
+.image-lightbox-zoom {
+  min-width: 52px;
+  padding: 0 4px;
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  user-select: none;
+}
+
+.image-lightbox-zoom:hover {
+  color: var(--text);
+}
+
+.image-lightbox-sep {
+  width: 1px;
+  height: 18px;
+  margin: 0 4px;
+  background: var(--line);
+}
+
+/* ---------- Assistant message (flat document prose) --------------------- */
+
+.entry.assistant {
+  color: var(--text);
+  white-space: normal;
+  margin-top: 4px;
+}
+
+.entry.assistant > *:first-child { margin-top: 0; }
+.entry.assistant > *:last-child  { margin-bottom: 0; }
+
+.entry.assistant p {
+  margin: 0 0 8px;
+  line-height: 1.6;
+}
+
+.entry.assistant h1,
+.entry.assistant h2,
+.entry.assistant h3,
+.entry.assistant h4,
+.entry.assistant h5,
+.entry.assistant h6 {
+  margin: 14px 0 6px;
+  color: var(--text-strong);
+  font-weight: 600;
+  line-height: 1.3;
+}
+.entry.assistant h1 { font-size: 1.18em; }
+.entry.assistant h2 { font-size: 1.10em; }
+.entry.assistant h3 { font-size: 1.04em; }
+.entry.assistant h4,
+.entry.assistant h5,
+.entry.assistant h6 { font-size: 1em; }
+
+.entry.assistant ul,
+.entry.assistant ol {
+  margin: 0 0 8px;
+  padding-left: 22px;
+}
+.entry.assistant ul ul,
+.entry.assistant ol ol,
+.entry.assistant ul ol,
+.entry.assistant ol ul { margin-bottom: 0; }
+
+.entry.assistant li {
+  margin: 2px 0;
+  line-height: 1.6;
+}
+.entry.assistant li > p { margin: 0; }
+.entry.assistant li input[type="checkbox"] {
+  margin-right: 6px;
+  vertical-align: middle;
+  accent-color: var(--accent);
+}
+
+/* Links carry a faded underline at rest (the mono themes' accent is nearly
+   the text color, so color alone can't mark a link) that solidifies on hover. */
+.entry.assistant a {
+  color: var(--accent);
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, currentColor 30%, transparent);
+  text-underline-offset: 3px;
+}
+.entry.assistant a:hover { text-decoration-color: currentColor; }
+
+.entry.assistant a:focus-visible {
+  border-radius: 3px;
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* Blockquote — quiet aside, no fill. */
+.entry.assistant blockquote {
+  margin: 6px 0 10px;
+  padding: 2px 0 2px 12px;
+  border-left: 3px solid var(--line);
+  color: var(--text-muted);
+}
+.entry.assistant blockquote > *:last-child { margin-bottom: 0; }
+
+.entry.assistant hr {
+  margin: 14px 0;
+  border: 0;
+  border-top: 1px solid var(--line-soft, var(--line));
+}
+
+/* Table — rounded card with horizontal dividers only (no vertical grid).
+   width: max-content keeps narrow tables at their natural width; wide ones
+   cap at the prose column and scroll inside the rounded frame. */
+.entry.assistant table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  overflow: auto;
+  margin: 6px 0 12px;
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--line-soft, var(--line));
+  border-radius: var(--r-md, 10px);
+  font-size: var(--fs-sm);
+  /* No scrollbar-gutter here: it reserves an inline-end (vertical-scrollbar)
+     strip that this horizontally-scrolling box never uses, leaving a bare
+     ~10px band inside the right border where th/td backgrounds don't paint. */
+}
+.entry.assistant th,
+.entry.assistant td {
+  padding: 5px 12px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft, var(--line));
+  text-align: left;
+}
+.entry.assistant th {
+  background: var(--panel-soft);
+  color: var(--text-strong);
+  font-weight: 600;
+}
+.entry.assistant tbody tr:last-child td {
+  border-bottom: 0;
+}
+
+.entry.assistant img {
+  max-width: 100%;
+  border-radius: var(--r-sm);
+}
+
+/* Auto-linkified workspace paths. */
+.entry.assistant .entry-path-link {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dashed transparent;
+  cursor: pointer;
+  transition: border-color 80ms ease;
+}
+.entry.assistant .entry-path-link:hover {
+  border-bottom-color: currentColor;
+}
+
+/* Inline code. */
+.entry.assistant code {
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--panel-soft);
+  color: var(--text-strong);
+  font-family: var(--font-code);
+  font-size: var(--code-font-size);
+}
+
+/* ---------- Code block (assistant fenced code) -------------------------- */
+
+.entry.assistant pre {
+  margin: 0;
+  padding: 0;
+  overflow: auto;
+  max-height: 480px;
+  background: var(--panel-soft);
+  font-family: var(--font-code);
+  font-size: var(--code-font-size);
+  line-height: 1.55;
+  white-space: pre;
+}
+
+.entry.assistant .code-block {
+  position: relative;
+  margin: 8px 0 12px;
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-radius: var(--r-md);
+  background: var(--panel-soft);
+}
+
+/* Toolbar (lang + Copy) fades in on hover — keep prose uncluttered. */
+.entry.assistant .code-block-toolbar {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 1;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 80ms ease;
+}
+
+.entry.assistant .code-block:hover .code-block-toolbar,
+.entry.assistant .code-block:focus-within .code-block-toolbar {
+  opacity: 1;
+}
+
+.entry.assistant .code-block-lang {
+  color: var(--text-faint);
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  text-transform: lowercase;
+  letter-spacing: 0.02em;
+}
+
+.entry.assistant .code-block-copy {
+  appearance: none;
+  pointer-events: auto;
+  height: 22px;
+  padding: 0 8px;
+  border: 1px solid var(--line-soft, var(--line));
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--fs-xs);
+  cursor: pointer;
+  transition: color 80ms ease, border-color 80ms ease, background 80ms ease;
+}
+
+.entry.assistant .code-block-copy:hover {
+  color: var(--text);
+  border-color: var(--line);
+  background: var(--panel-elevated);
+}
+
+.entry.assistant .code-block-copy.is-copied {
+  color: var(--success);
+  border-color: var(--success);
+}
+
+/* Collapsed long code: clip + fade + expand. */
+.entry.assistant .code-block-collapsed pre { max-height: 280px; }
+
+.entry.assistant .code-block-collapsed::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 36px;
+  height: 48px;
+  pointer-events: none;
+  background: linear-gradient(to bottom, transparent, var(--panel-soft));
+}
+
+.entry.assistant .code-block-expand {
+  display: block;
+  width: 100%;
+  appearance: none;
+  border: 0;
+  border-top: 1px solid var(--line-soft, var(--line));
+  padding: 8px 12px;
+  background: var(--panel-soft);
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--fs-xs);
+  text-align: center;
+  cursor: pointer;
+  transition: color 80ms ease, background 80ms ease;
+}
+
+.entry.assistant .code-block-expand:hover {
+  color: var(--text);
+  background: var(--bg);
+}
+
+/* hljs sets `pre code.hljs { padding: 1em; background: ... }`; override
+ * layout while keeping its syntax colors. */
+.entry.assistant pre code,
+.entry.assistant pre code.hljs {
+  display: block;
+  padding: 10px 12px;
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: inherit;
+  overflow-x: auto;
+}
+
+/* Light syntax colors follow the existing panel surface without re-tokenizing.
+ * Scope them to code blocks; other components also consume --shiki-* colors.
+ * Base46 themes keep their own syntax palette. */
+:root:is([data-theme="light"], [data-theme="porcelain"], [data-theme="snow"], [data-theme="silver"]) .entry.assistant .code-block {
+  --shiki-foreground: var(--text);
+  --shiki-token-constant: #0550ae;
+  --shiki-token-string: #0a3069;
+  --shiki-token-comment: #57606a;
+  --shiki-token-keyword: #b91c2b;
+  --shiki-token-parameter: #953800;
+  --shiki-token-function: #6f42c1;
+  --shiki-token-string-expression: #116329;
+  --shiki-token-punctuation: var(--text);
+  --shiki-token-link: #0550ae;
+  --shiki-token-inserted: #116329;
+  --shiki-token-deleted: #82071e;
+  --shiki-token-changed: #953800;
+}
+
+/* ---------- Reasoning aside (Thoughts disclosure) -----------------------
+ * Box style — matches tool-call[open]. Collapsed: a quiet labeled row inside
+ * a transparent box; expanded: a tinted hairline + soft fill appear, header
+ * gets a faint bottom divider, italic body sits flush-left. While streaming
+ * the icon pulses and the "Thoughts" label shimmers. */
+
+/* No box chrome — neither closed nor open. The body uses a left accent bar
+ * to mark its scope; the summary stays flush with the surrounding prose. */
+.entry.assistant .assistant-reasoning {
+  margin: 6px 0 10px;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  overflow: visible;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  transition: none;
+}
+
+.entry.assistant .assistant-reasoning[open] {
+  background: transparent;
+}
+
+.entry.assistant .assistant-reasoning-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0;
+  cursor: pointer;
+  user-select: none;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  transition: color 120ms ease;
+  border-radius: 0;
+}
+
+/* Chevron after the label — flips on open, no box chrome. */
+.entry.assistant .assistant-reasoning-summary::after {
+  content: "";
+  width: 8px;
+  height: 8px;
+  margin-left: 2px;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg) translate(-1px, -1px);
+  transition: transform 160ms ease;
+  opacity: 0.7;
+}
+.entry.assistant .assistant-reasoning[open] .assistant-reasoning-summary::after {
+  transform: rotate(-135deg) translate(-1px, -1px);
+}
+
+.entry.assistant .assistant-reasoning-summary:hover { color: var(--text); }
+.entry.assistant .assistant-reasoning-summary::-webkit-details-marker { display: none; }
+
+/* Bare ✦ glyph — no pill. Hover gently rotates so the sparkle feels alive
+ * even when no reasoning is actively streaming. */
+.entry.assistant .assistant-reasoning .reasoning-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: auto;
+  height: auto;
+  background: transparent;
+  color: #4286f5;
+  font-size: 14px;
+  line-height: 1;
+  transition: transform 240ms ease;
+}
+
+.entry.assistant .assistant-reasoning-summary:hover .reasoning-icon {
+  transform: rotate(60deg) scale(1.15);
+}
+
+/* Static "Thoughts" label — soft accent gradient at rest so the row reads
+ * as a model-thinking artifact even when collapsed. The streaming variant
+ * below replaces this with a moving shimmer. */
+.entry.assistant .assistant-reasoning .reasoning-label {
+  color: var(--text-muted);
+  font-weight: 500;
+  letter-spacing: 0;
+}
+
+.entry.assistant .assistant-reasoning .reasoning-elapsed {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0;
+  text-transform: none;
+}
+
+/* Open state body — italic text with a soft accent left bar marking its
+ * scope. No surrounding box. The bar tint stays subtle (40% accent over
+ * line) so the body still reads as supporting context, not a callout. */
+.entry.assistant .assistant-reasoning-body {
+  margin: 8px 0 0 5px;
+  padding: 2px 0 2px 14px;
+  /* chain-of-thought rail — 1px left border, unified with the agent-trace /
+   * subagent timeline. */
+  border-left: 1px solid var(--line);
+  color: var(--text-muted);
+  font-size: var(--fs-base);
+  font-style: italic;
+  line-height: 1.65;
+  white-space: pre-wrap;
+  max-height: 340px;
+  overflow-y: auto;
+}
+
+/* Live streaming: pulse the icon, shimmer the label. */
+.entry.assistant .assistant-reasoning.reasoning-streaming .reasoning-icon {
+  animation: reasoning-pulse 1600ms ease-in-out infinite;
+}
+
+.entry.assistant .assistant-reasoning.reasoning-streaming .reasoning-label {
+  background: linear-gradient(
+    90deg,
+    var(--text-muted) 0%,
+    var(--text-muted) 40%,
+    var(--text-strong) 50%,
+    var(--text-muted) 60%,
+    var(--text-muted) 100%
+  );
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: reasoning-shimmer 2200ms linear infinite;
+}
+
+/* Slow twinkle — rotates and breathes simultaneously so the sparkle reads
+ * as "actively thinking" rather than a metronomic pulse. The 5-step cycle
+ * deliberately doesn't return to 0deg until the next iteration restarts,
+ * so the motion never visibly snaps. */
+@keyframes reasoning-pulse {
+  0%   { opacity: 0.55; transform: rotate(0deg)   scale(1); }
+  25%  { opacity: 1;    transform: rotate(36deg)  scale(1.18); }
+  50%  { opacity: 0.7;  transform: rotate(72deg)  scale(0.95); }
+  75%  { opacity: 0.95; transform: rotate(108deg) scale(1.1); }
+  100% { opacity: 0.55; transform: rotate(144deg) scale(1); }
+}
+
+@keyframes reasoning-shimmer {
+  0%   { background-position: 100% 0; }
+  100% { background-position: -100% 0; }
+}
+
+/* ---------- Thinking entry (live status line) --------------------------- */
+
+.thinking-entry {
+  --thinking-glyph: #35d7ff;
+  --thinking-word: var(--text);
+  --thinking-meta: var(--text-muted);
+  --thinking-caret: var(--text-muted);
+  --thinking-slow: #f4bb5f;
+  width: var(--chat-content-width);
+  max-width: var(--chat-content-max-width);
+  margin: 0 auto 8px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  padding: 2px 0;
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+
+.thinking-word {
+  font-weight: 500;
+  color: var(--thinking-word);
+}
+
+.thinking-meta { color: var(--thinking-meta); font-size: var(--fs-xs); }
+
+/* After 30s the spinner has been waiting long enough to hint at trouble —
+   warm the meta line so the user knows it's actually been a while without
+   the verb itself shouting. */
+.thinking-entry.is-slow .thinking-meta { color: var(--thinking-slow); }
+
+/* ---------- Text shimmer (thinking word) -------------------------------- *
+ * "Alive" signal on the working label: the text is painted by a wide
+ * background gradient (background-clip: text) whose bright band slides
+ * across via a background-position animation. The gradient is 3x the label
+ * width with the band in the middle, so each pass ends with a beat of rest
+ * before the next sweep. Both colors derive from currentColor, so the effect
+ * follows the theme with no extra hooks and no JS measurement. */
+@keyframes text-shimmer {
+  from { background-position: 100% 0; }
+  to { background-position: 0% 0; }
+}
+
+.text-shimmer {
+  display: inline-block;
+  width: fit-content;
+
+  /* Dark-first: resting text is dimmed currentColor, the band lifts
+     lightness toward white. Light theme (below) swaps the roles. */
+  --shimmer-rest: oklch(from currentColor l c h / calc(alpha * 0.5));
+  --shimmer-band: oklch(from currentColor max(0.85, calc(l + 0.35)) c h);
+
+  background: linear-gradient(
+      105deg,
+      var(--shimmer-rest) 40%,
+      var(--shimmer-band) 50%,
+      var(--shimmer-rest) 60%
+    )
+    0 0 / 300% 100% no-repeat;
+  background-clip: text;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+
+  animation: text-shimmer 2.4s linear infinite;
+}
+
+/* Light theme: the label ink is dark, so lifting lightness has no headroom.
+   Keep the text at full strength and sweep a faded band through instead. */
+:root[data-theme="light"] .text-shimmer {
+  --shimmer-rest: currentColor;
+  --shimmer-band: oklch(from currentColor l c h / calc(alpha * 0.35));
+}
+
+/* ---------- Tool / system / error entries ------------------------------- */
+
+.entry.tool,
+.entry.system {
+  color: var(--text-muted);
+  font-size: var(--fs-sm);
+}
+
+.entry.system {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+
+/* Centered divider for compaction boundaries (manual /compact + auto-compact).
+ * A label flanked by hairlines — codex/claude-code style. While the summary
+ * model call is in flight the label pulses (.is-active); on completion the
+ * pulse stops and the text is swapped for the result. */
+.compact-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 2px;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  user-select: none;
+}
+.compact-divider::before,
+.compact-divider::after {
+  content: "";
+  flex: 1 1 0;
+  height: 1px;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+.compact-divider-label {
+  white-space: nowrap;
+  letter-spacing: 0.02em;
+}
+.compact-divider.is-active .compact-divider-label {
+  animation: compact-pulse 1.4s ease-in-out infinite;
+}
+@keyframes compact-pulse {
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
+}
+
+/* Long-session render window: the "Show N earlier turns" expander mounted
+ * above the visible tail (Timeline.tsx CommittedTranscript). Same quiet
+ * divider chrome as .compact-divider — a hairline on both sides of a
+ * centered pill button. */
+.history-expander {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 12px 2px;
+  color: var(--text-faint);
+  user-select: none;
+}
+.history-expander::before,
+.history-expander::after {
+  content: "";
+  flex: 1 1 0;
+  height: 1px;
+  background: color-mix(in srgb, currentColor 22%, transparent);
+}
+.history-expander-btn {
+  appearance: none;
+  border: 1px solid color-mix(in srgb, currentColor 28%, transparent);
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  padding: 3px 12px;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.history-expander-btn:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+  color: var(--text);
+}
+
+/* Error: red rail + soft red fill. The only entry that uses both rail AND
+ * background — failures must be impossible to miss. */
+.error-entry {
+  border-left: var(--rail) solid var(--danger);
+  border-radius: 0 var(--r-md) var(--r-md) 0;
+  background: var(--danger-soft);
+  color: var(--danger-text);
+  font-size: var(--fs-base);
+  overflow: hidden;
+  /* Override .entry's pre-wrap so whitespace between <summary> and <pre>
+   * doesn't render as visible blank lines if a callsite builds this with
+   * HTML literals instead of createElement. Inner <pre> still preserves its
+   * own content's whitespace via its own white-space rule. */
+  white-space: normal;
+}
+
+.error-entry summary {
+  cursor: pointer;
+  padding: 9px 12px;
+  font-weight: 500;
+  list-style: none;
+}
+
+.error-entry summary::-webkit-details-marker { display: none; }
+
+.error-entry pre {
+  margin: 0;
+  border-top: 1px solid color-mix(in srgb, var(--danger) 22%, transparent);
+  padding: 9px 12px;
+  overflow: auto;
+  max-height: 220px;
+  color: var(--danger-text);
+  font-family: var(--font-code);
+  font-size: var(--fs-sm);
+  white-space: pre-wrap;
+}
+
+.error-entry-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  border-top: 1px solid color-mix(in srgb, var(--danger) 22%, transparent);
+  padding: 10px 12px;
+  background: var(--control-bg);
+}
+
+.error-entry-hint {
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.error-entry-actions .settings-action { align-self: flex-start; }
+
+/* ---------- Empty state -------------------------------------------------- */
+
+.empty-state {
+  margin: 16px 18px 8px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.empty-state-text { color: var(--text-muted); }
+
+.empty-state-link {
+  appearance: none;
+  background: none;
+  border: 0;
+  padding: 0;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+}
+
+.empty-state-link:hover { text-decoration: underline; }
+
+/* ---------- Tool call row (the workhorse) -------------------------------
+ * Resting (collapsed):
+ *   Flat one-line row, no border, no fill. Just icon + title + target +
+ *   status. Status is carried by the icon's color.
+ *
+ * Open (expanded):
+ *   The whole row turns into a bordered "card" — 1px hairline, soft fill,
+ *   rounded corners. Inside the box, summary sits at the top with a faint
+ *   divider, body sits below flush-left. This matches the inline-log
+ *   preview look (header line + code block as one unit).
+ *
+ * Failed / pending (always, regardless of open):
+ *   The row gains a status-tinted border + soft tinted fill so a single
+ *   failure or approval prompt stops the eye even before it's expanded.
+ *
+ * Inline mode (read-only tools that have completed):
+ *   The summary row IS the result. Strip the chevron, hover bg, body, and
+ *   any border. A run of inline calls reads as a tight monospace list.
+ *
+ * Renderer's exact child order inside .tool-call-summary:
+ *   .tool-icon · .tool-title · .tool-target · .tool-meta · .tool-status
+ * Plus a ::after chevron pinned to column 6 row 1.
+ * ------------------------------------------------------------------------ */
+.tool-call {
+  display: block;
+  margin: 6px auto;
+  padding: 0;
+  /* Each tool call is a bordered, rounded card. State tints the border
+   * (failed → danger, pending → warning) below. */
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  overflow: hidden;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  white-space: normal;
+  box-sizing: border-box;
+}
+
+.tool-call[open] {
+  margin: 6px auto;
+  background: transparent;
+}
+
+/* ── Smooth expand / collapse ────────────────────────────────────────────────
+ * Native <details> snaps open. We animate the auto-generated ::details-content
+ * wrapper (everything after <summary>) so the body slides + fades in/out.
+ *   - interpolate-size: allow-keywords lets block-size animate to/from `auto`.
+ *   - content-visibility rides the same transition with allow-discrete so the
+ *     content stays painted through the close animation, then snaps hidden.
+ * Chromium ≥131 (Electron 39 ships ~140), so no JS height measuring needed.
+ * Deliberately NOT gated behind prefers-reduced-motion: a short, non-vestibular
+ * height slide that shows where the disclosed content came from / went. */
+.tool-call,
+.tool-group,
+.tool-run-group,
+.turn-process {
+  interpolate-size: allow-keywords;
+}
+
+.tool-call::details-content,
+.tool-group::details-content,
+.tool-run-group::details-content,
+.turn-process::details-content {
+  block-size: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    block-size 200ms cubic-bezier(0.2, 0, 0, 1),
+    opacity 160ms ease,
+    content-visibility 200ms allow-discrete;
+}
+
+.tool-call[open]::details-content,
+.tool-group[open]::details-content,
+.tool-run-group[open]::details-content,
+.turn-process[open]::details-content {
+  block-size: auto;
+  opacity: 1;
+}
+
+/* Status accents — the card border tints by state (error → danger ~30%,
+ * requires-action/pending → warning ~40%). The icon color still carries
+ * status too. */
+.tool-call.status-failed {
+  border-color: color-mix(in srgb, var(--danger) 32%, var(--line));
+}
+.tool-call.status-pending {
+  border-color: color-mix(in srgb, var(--warning) 42%, var(--line));
+}
+
+.tool-call-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 34px;
+  width: 100%;
+  max-width: 100%;
+  padding: 6px 12px;
+  list-style: none;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background-color 120ms ease;
+}
+
+/* Leading status indicator — reina's per-tool sprite icons are inconsistent
+ * (some, e.g. `cube`, read as a hollow box at 14px), so instead of surfacing
+ * them we keep the tool icon hidden and draw a small state-colored dot on the
+ * summary (::before below) — a leading status mark that is always a clean
+ * circle. */
+.tool-call > .tool-call-summary .tool-icon {
+  display: none;
+}
+
+/* State-colored status dot at the start of the trigger. */
+.tool-call-summary::before {
+  content: "";
+  flex-shrink: 0;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-faint);
+}
+.tool-call.status-completed > .tool-call-summary::before { background: var(--success); }
+.tool-call.status-running   > .tool-call-summary::before { background: var(--accent); }
+.tool-call.status-failed    > .tool-call-summary::before { background: var(--danger); }
+.tool-call.status-pending   > .tool-call-summary::before { background: var(--warning); }
+.tool-call.status-rejected  > .tool-call-summary::before { background: var(--text-faint); opacity: 0.45; }
+
+.tool-call-summary:hover {
+  background: color-mix(in srgb, var(--text) 6%, transparent);
+}
+
+.tool-call[open] > .tool-call-summary {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border-bottom: 1px solid var(--line);
+}
+
+/* Minimal collapsed row: title + subtitle/args + chevron are visible.
+ * Meta (timing) is hidden — it belongs in the expanded body. The status pill
+ * stays controlled by the per-status rules below so running/pending still
+ * surface a live indicator (icon column is hidden globally above). */
+.tool-call > .tool-call-summary .tool-meta {
+  display: none;
+}
+
+/* Chevron — literal ▸ glyph, rotates 90° to point down on [open]. */
+.tool-call-summary::after {
+  content: "▸";
+  flex-shrink: 0;
+  margin-left: 2px;
+  color: var(--text-faint);
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: transform 160ms ease;
+}
+
+.tool-call[open] > .tool-call-summary::after {
+  transform: rotate(90deg);
+}
+
+.tool-call-summary::-webkit-details-marker { display: none; }
+
+/* Icon column — color is the status. Running pulses. */
+.tool-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  color: var(--text-faint);
+}
+
+.tool-icon svg {
+  display: block;
+  width: 14px;
+  height: 14px;
+}
+
+.tool-call.status-running   .tool-icon { color: var(--accent);  animation: tool-icon-pulse 1.4s ease-in-out infinite; position: relative; }
+.tool-call.status-completed .tool-icon { color: var(--success); }
+.tool-call.status-failed    .tool-icon { color: var(--danger); }
+.tool-call.status-pending   .tool-icon { color: var(--warning); }
+.tool-call.status-rejected  .tool-icon { color: var(--text-faint); opacity: 0.5; }
+
+/* A small accent dot pinned to the top-right of the icon. Reads as a
+ * "live" badge so an active task is obvious without reading the title.
+ * Layered on top of the existing tool-icon-pulse — the icon's color
+ * breathes while the dot snaps. */
+/* Shared "running dot" appearance — the tool icon's ::after badge and the
+ * group header's .tool-run-group-live are the SAME dot; tune size/tempo/color
+ * here so the two can't drift apart. Structural placement (absolute badge vs
+ * flex child) stays in each selector's own rule. */
+.tool-call.status-running .tool-icon::after,
+.tool-run-group-live {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  animation: tool-running-dot 1.4s ease-in-out infinite;
+}
+
+.tool-call.status-running .tool-icon::after {
+  content: "";
+  position: absolute;
+  top: -2px;
+  right: -4px;
+  box-shadow: none;
+}
+
+@keyframes tool-running-dot {
+  0%, 100% { transform: scale(0.6); opacity: 0.4; }
+  50%      { transform: scale(1);   opacity: 1; }
+}
+
+@keyframes tool-icon-pulse {
+  0%, 100% { opacity: 0.45; }
+  50%      { opacity: 1; }
+}
+
+/* Title — content-sized auto column with its own ellipsis defense. */
+.tool-title {
+  color: var(--text-strong);
+  font-family: var(--font-code);
+  font-weight: 500;
+  font-size: var(--fs-sm);
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Failed tool — use the softer danger text token so failures stay visible
+ * without glowing against the dark transcript background. */
+.tool-call.status-failed .tool-title,
+.tool-call.status-failed .tool-subtitle,
+.tool-call.status-failed .tool-args {
+  color: var(--danger-text);
+}
+
+.tool-call.status-failed > .tool-call-summary::after {
+  color: var(--danger-text);
+}
+
+/* Group containing at least one failed tool — header reads red, so a
+ * collapsed group still surfaces that something inside broke. */
+.tool-group:has(> .tool-group-body > .tool-call.status-failed) > .tool-group-summary > .tool-group-title,
+.tool-group:has(> .tool-group-body > .tool-call.status-failed) > .tool-group-summary::after,
+.tool-group:has(> .tool-group-body > .tool-call.status-failed) > .tool-group-summary > .tool-group-count {
+  color: var(--danger-text);
+}
+
+/* Target = wrapper for subtitle + args. Flex column absorbs free width
+ * and ellipsises long content rather than pushing siblings off the row. */
+.tool-target {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+}
+
+.tool-subtitle {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-muted);
+  font-family: var(--font-code);
+  font-weight: 400;
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Clickable path subtitle (Read foo.ts → open foo.ts). */
+.tool-subtitle-link {
+  cursor: pointer;
+  text-decoration: underline;
+  text-decoration-color: transparent;
+  text-underline-offset: 2px;
+  transition: color 120ms ease, text-decoration-color 120ms ease;
+}
+
+.tool-subtitle-link:hover {
+  color: var(--accent);
+  text-decoration-color: currentColor;
+}
+
+.tool-subtitle:empty,
+.tool-args:empty { display: none; }
+
+.tool-args {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+}
+
+.tool-arg {
+  flex-shrink: 0;
+  padding: 0 5px;
+  border-radius: 4px;
+  background: var(--panel-soft);
+  color: var(--text-faint);
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  line-height: 17px;
+}
+
+.tool-meta {
+  flex-shrink: 0;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.tool-meta:empty { display: none; }
+
+/* Status pill: only shown when it carries info beyond the icon's color.
+ * Completed/Failed/Rejected hide it — icon color already conveys those.
+ * Running shows the elapsed/word; Pending shows "needs approval". */
+.tool-status {
+  flex-shrink: 0;
+  min-width: 46px;
+  padding: 0 6px;
+  border-radius: var(--r-pill);
+  background: var(--panel-soft);
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  line-height: 18px;
+  text-align: center;
+}
+
+.tool-call.status-running .tool-status {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.tool-call.status-pending .tool-status {
+  color: var(--warning);
+  background: var(--warning-soft);
+}
+
+.tool-call.status-completed .tool-status,
+.tool-call.status-failed    .tool-status,
+.tool-call.status-rejected  .tool-status { display: none; }
+
+/* Tighten vertical rhythm between consecutive tool rows so they read
+ * as a list, not as separate events. */
+.tool-call + .tool-call { margin-top: 6px; }
+
+/* ---------- Tool group card (multiple inline collapsible rows) ----------
+ * Wraps a tool_group with 2+ details so the user sees one header line
+ * (e.g. "Searched code, read a file") with the inner rows nested below.
+ * The card has a soft hairline border and rounded corners; inside, each
+ * .tool-call row keeps its borderless minimal look. */
+.tool-group {
+  display: block;
+  margin: 6px auto;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: transparent;
+  overflow: hidden;
+  box-sizing: border-box;
+  white-space: normal;
+}
+
+.tool-group-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 12px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  transition: background-color 120ms ease;
+  border-radius: 0;
+}
+
+.tool-group-summary::-webkit-details-marker { display: none; }
+
+.tool-group-summary:hover {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+}
+
+.tool-group-title {
+  min-width: 0;
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tool-group-count {
+  flex-shrink: 0;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.tool-group-count:empty { display: none; }
+
+.tool-group-summary::after {
+  content: "▸";
+  flex-shrink: 0;
+  margin-left: 4px;
+  color: var(--text-faint);
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: transform 160ms ease;
+}
+
+.tool-group[open] > .tool-group-summary::after {
+  transform: rotate(90deg);
+}
+
+/* Open group trigger gets the same subtle fill + hairline as an open
+ * tool-call trigger — it reads as a filled bar above the inner cards. */
+.tool-group[open] > .tool-group-summary {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  border-bottom: 1px solid var(--line);
+}
+
+/* Body holds the inner tool cards as a padded, gapped stack. */
+.tool-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 5px;
+  background: transparent;
+}
+
+/* Inner tool calls render as standalone ChatTool cards (Default/Streaming):
+ * each keeps its own border + rounded corners + normal body. We only reset the
+ * centered-column width/margin so they fill the group instead of the 720px
+ * entry width. */
+.tool-group-body > .tool-call {
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+  white-space: normal;
+}
+
+/* ---------- Turn process fold -------------------------------------------
+ * A finished turn collapses its reasoning rounds, tool groups, and any
+ * non-final assistant text into one "Worked for … · N steps" disclosure;
+ * the final answer stays visible below it. Summary mirrors .tool-group;
+ * the body is a quiet indented rail rather than a second tinted card so
+ * nested tool-group fills don't double up. */
+
+.turn-process {
+  display: block;
+  /* 6px wider each side than the content column: .entry's content-visibility
+   * implies paint containment (clips at the padding edge), which would slice
+   * the summary pill's -6px overhang flat. The side padding absorbs the
+   * overhang while the content box stays aligned with the column. */
+  width: calc(var(--chat-content-width) + 12px);
+  max-width: calc(var(--chat-content-max-width) + 12px);
+  padding: 0 6px;
+  margin: 6px auto;
+  box-sizing: border-box;
+}
+
+.turn-process-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  /* Pull the left padding back so the label's text edge lines up with the
+   * answer body (and Thoughts rows) at the column edge; the padding still
+   * insets the hover highlight. */
+  margin-left: -6px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--text-muted, var(--text));
+  font-size: var(--fs-sm);
+  border-radius: var(--r-sm);
+  transition: background-color 120ms ease;
+}
+
+.turn-process-summary::-webkit-details-marker { display: none; }
+
+.turn-process-summary:hover {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  color: var(--text);
+}
+
+.turn-process-label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.turn-process-count {
+  flex-shrink: 0;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.turn-process-count::before {
+  content: "·";
+  margin-right: 6px;
+  color: var(--text-faint);
+}
+
+.turn-process-summary::after {
+  content: "▸";
+  flex-shrink: 0;
+  margin-left: 2px;
+  color: var(--text-faint);
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: transform 160ms ease;
+}
+
+.turn-process[open] > .turn-process-summary::after {
+  transform: rotate(90deg);
+}
+
+.turn-process-body {
+  margin-top: 4px;
+  padding-left: 14px;
+  /* chain-of-thought rail — unify with the agent-trace / subagent timeline. */
+  border-left: 1px solid var(--line);
+  color: var(--text-muted);
+}
+
+/* The folded process is secondary — mute all its text (prose, tool summaries,
+ * thoughts) so the final answer outside the fold stays the focal point. */
+.turn-process-body .tool-group-summary,
+.turn-process-body .tool-call-summary,
+.turn-process-body .tool-title,
+.turn-process-body .tool-subtitle {
+  color: var(--text-muted);
+}
+
+.turn-process-body .assistant-body,
+.turn-process-body .assistant-body :where(p, li, ul, ol, strong, em, span, h1, h2, h3, h4, blockquote, td, th) {
+  color: var(--text-muted) !important;
+}
+
+/* Folded children fill the rail instead of keeping the 720px entry width. */
+.turn-process-body > .entry,
+.turn-process-body > .tool-group,
+.turn-process-body > .assistant-reasoning {
+  width: auto;
+  max-width: 100%;
+  margin-left: 0;
+  margin-right: 0;
+}
+
+/* ---------- Tool run group (batched consecutive tool calls) --------------
+ * Render-side batching of a tool streak into one quiet disclosure
+ * ("Ran 7 commands, ran 3 agents, used a tool") — the CC-desktop pattern.
+ * Summary mirrors .turn-process-summary (quiet text row, no card chrome);
+ * the body reuses the same indented rail, with the inner .tool-call cards
+ * stripped to borderless one-line mini rows. Running tools fold in too —
+ * the header pulses an accent dot (.is-running). Only pending-approval
+ * stays outside as a loose card (the HITL approval flow). */
+
+.tool-run-group {
+  display: block;
+  /* +12px / 6px side padding: same paint-containment escape as .turn-process
+   * so the summary pill's -6px overhang isn't clipped flat on the left. */
+  width: calc(var(--chat-content-width) + 12px);
+  max-width: calc(var(--chat-content-max-width) + 12px);
+  padding: 0 6px;
+  margin: 6px auto;
+  box-sizing: border-box;
+  white-space: normal;
+}
+
+.tool-run-group-summary {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 6px;
+  /* Same left-edge alignment trick as .turn-process-summary. */
+  margin-left: -6px;
+  cursor: pointer;
+  list-style: none;
+  color: var(--text-muted, var(--text));
+  font-size: var(--fs-sm);
+  border-radius: 6px;
+}
+
+.tool-run-group-summary::-webkit-details-marker { display: none; }
+
+.tool-run-group-summary:hover {
+  background: color-mix(in srgb, var(--text) 4%, transparent);
+  color: var(--text);
+}
+
+.tool-run-group-label {
+  white-space: nowrap;
+}
+
+/* Live badge — a collapsed group with a running child still reads as active.
+ * Dot appearance shared with the running tool-icon badge (see the comma rule
+ * next to @keyframes tool-running-dot); only layout lives here. */
+.tool-run-group-live {
+  flex-shrink: 0;
+}
+
+.tool-run-group.is-running > .tool-run-group-summary {
+  color: var(--text);
+}
+
+.tool-run-group-count {
+  flex-shrink: 0;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.tool-run-group-count::before {
+  content: "·";
+  margin-right: 6px;
+  color: var(--text-faint);
+}
+
+.tool-run-group-summary::after {
+  content: "▸";
+  flex-shrink: 0;
+  margin-left: 2px;
+  color: var(--text-faint);
+  font-size: 10px;
+  line-height: 1;
+  opacity: 0.7;
+  transition: transform 160ms ease;
+}
+
+.tool-run-group[open] > .tool-run-group-summary::after {
+  transform: rotate(90deg);
+}
+
+/* A failed child turns the header red so a collapsed group can't hide an
+ * error (the group stays collapsed by default — red is the only signal). */
+.tool-run-group.has-failed > .tool-run-group-summary,
+.tool-run-group.has-failed > .tool-run-group-summary::after,
+.tool-run-group.has-failed > .tool-run-group-summary .tool-run-group-count {
+  color: var(--danger-text);
+}
+
+.tool-run-group-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 4px;
+  /* 4px bottom padding keeps the ::details-content overflow clip (and the
+   * .entry paint-containment edge) off the last card's bottom border — flush
+   * clip + fractional layout shears the border at non-integer DPRs. */
+  padding: 0 0 4px 14px;
+  /* Same chain-of-thought rail as .turn-process-body. */
+  border-left: 1px solid var(--line-soft, var(--line));
+}
+
+/* Children keep their ORIGINAL card design (border, summary, output blocks) —
+ * only the centered-column geometry is swapped for fill-the-rail width. */
+.tool-run-group-body > .tool-call,
+.tool-run-group-body > .tool-group,
+.tool-run-group-body > .entry {
+  width: auto;
+  max-width: 100%;
+  margin: 0;
+}
+
+/* ---------- Tool call body (expanded) -----------------------------------
+ * Body sits flush inside the box, matching the summary's horizontal padding
+ * so header and body align at the same left edge — like a CLI result block.
+ * Block previews inside use only a soft background fill (no visible border)
+ * since the surrounding .tool-call[open] already has its own hairline. */
+
+.tool-call-body {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  width: 100%;
+  min-width: 0;
+  padding: 8px 12px;
+  box-sizing: border-box;
+}
+
+.tool-call-body:empty { display: none; }
+
+/* Preview block — fill, no border. Position:relative anchors the hover
+ * action bar (head bar with Copy). */
+.tool-body-block {
+  position: relative;
+  overflow: hidden;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--panel-soft) 60%, var(--bg));
+}
+
+.tool-call.status-failed .tool-body-block {
+  background: color-mix(in srgb, var(--danger-soft) 28%, var(--bg));
+}
+
+/* Compact head row — short label + actions on the right. No bottom border;
+ * the soft fill of the block is the only containment. The Copy button stays
+ * faint until the block is hovered, so idle previews read quietly. */
+.tool-body-block-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  min-height: 20px;
+  padding: 2px 8px 0;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.02em;
+}
+
+.tool-body-block-head:empty { display: none; }
+
+.tool-body-copy,
+.tool-body-expand {
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: var(--fs-xs);
+  padding: 0;
+  cursor: pointer;
+  transition: color 100ms ease, opacity 100ms ease;
+}
+
+/* Copy fades out when the user isn't reaching for it — head label stays. */
+.tool-body-block .tool-body-copy { opacity: 0.55; }
+.tool-body-block:hover .tool-body-copy,
+.tool-body-block:focus-within .tool-body-copy { opacity: 1; }
+
+.tool-body-copy:hover,
+.tool-body-expand:hover { color: var(--text); }
+
+.tool-call-body pre {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 0;
+  background: transparent;
+  overflow: auto;
+  max-height: 280px;
+  color: var(--text-muted);
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+  min-width: 0;
+  width: 100%;
+  align-self: stretch;
+  box-sizing: border-box;
+}
+
+.tool-call-body .tool-body-cmd   { color: var(--text); }
+.tool-call-body .tool-body-error { color: var(--danger-text); background: transparent; }
+
+/* Error bodies: the red icon + rail already say "this failed". Strip the
+ * bordered "error" sub-card so the message reads flush with the row — a quiet
+ * red line, not a heavy filled block. The `.status-failed` selector below must
+ * out-specify `.tool-call.status-failed .tool-body-block` (which tints failed
+ * blocks red); otherwise that fill wins and the error gets a garish red box. */
+.tool-body-block:has(> .tool-body-error),
+.tool-call.status-failed .tool-body-block:has(> .tool-body-error) {
+  border: 0;
+  background: transparent;
+  overflow: visible;
+}
+
+.tool-body-block:has(> .tool-body-error) .tool-body-block-head { display: none; }
+
+.tool-body-block > .tool-body-error { padding: 2px 8px 4px; }
+
+/* Flat input block — one `key: value` line per input parameter, rendered
+ * directly (no collapsed details, no JSON braces). The key is faint, the
+ * value sits in the regular text color and preserves newlines so multi-line
+ * string args stay readable. */
+.tool-call-body .tool-body-input {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  padding: 2px 0 4px;
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  line-height: 1.5;
+}
+
+.tool-call-body .tool-body-input-line {
+  display: block;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+  word-break: normal;
+}
+
+.tool-call-body .tool-body-input-key {
+  color: var(--text-faint);
+}
+
+.tool-call-body .tool-body-input-val {
+  color: var(--text);
+}
+
+/* ---------- Diff (edit_file / multi_edit / write_file / apply_patch) ---- */
+
+.tool-diff {
+  overflow: hidden;
+  border: 1px solid var(--line-soft, var(--line));
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  font-family: var(--font-code);
+  font-size: var(--fs-xs);
+  line-height: 1.55;
+}
+
+.tool-diff-head {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  padding: 2px 8px;
+  border-bottom: 1px solid var(--line-soft, var(--line));
+  color: var(--text-faint);
+  font-family: var(--font-ui);
+  font-size: var(--fs-xs);
+}
+
+.tool-diff-hunk { padding: 4px 0; }
+
+.tool-diff-hunk + .tool-diff-hunk {
+  margin-top: 2px;
+  border-top: 1px dashed var(--line-soft, var(--line));
+}
+
+.tool-diff-line {
+  padding: 0 8px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.tool-diff-line.add     { background: var(--diff-added);   color: var(--diff-added-text); }
+.tool-diff-line.del     { background: var(--diff-removed); color: var(--diff-removed-text); }
+.tool-diff-line.context { color: var(--text-muted); }
+.tool-diff-line.hunk    { background: var(--diff-hunk); color: var(--diff-hunk-text); font-style: italic; }
+
+/* ---------- Todo checklist (write_todos) -------------------------------- */
+
+.tool-todo-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 2px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.tool-todo-item {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--text);
+  font-size: var(--fs-sm);
+  line-height: 1.5;
+}
+
+.tool-todo-mark {
+  flex: none;
+  width: 14px;
+  text-align: center;
+  font-family: var(--font-code);
+  font-size: var(--fs-sm);
+  color: var(--text-faint);
+}
+
+.tool-todo-item.status-completed   .tool-todo-mark { color: var(--success); }
+.tool-todo-item.status-in_progress .tool-todo-mark { color: var(--accent); }
+
+.tool-todo-text {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.tool-todo-item.status-completed .tool-todo-text {
+  color: var(--text-muted);
+  text-decoration: line-through;
+}
+
+.tool-todo-item.status-in_progress .tool-todo-text {
+  color: var(--text-strong);
+  font-weight: 500;
+}
+
+/* ---------- Subagent (async-task) panel ---------------------------------
+ * Box style with an accent-tinted hairline so it reads as a "child branch"
+ * of its parent tool call without falling back to a heavier rail. Often
+ * nested inside a tool-call body — keep the chrome light so the visual
+ * weight stays manageable when the outer .tool-call[open] box is also drawn. */
+
+.subagent-panel {
+  width: var(--chat-content-width);
+  max-width: var(--chat-content-max-width);
+  margin: 6px auto 8px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--accent) 28%, var(--line-soft));
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--accent-soft) 14%, var(--bg));
+}
+
+/* Nested inside a tool-call body: reset the centered-column overrides so the
+ * panel fills its parent and reads as a continuation of the tool-call's box,
+ * not a smaller card floating inside it. */
+.tool-call-body .subagent-panel {
+  width: auto;
+  max-width: none;
+  margin-inline: 0;
+}
+
+/* Nested inside a tool-call's body: the outer .tool-call[open] box is already
+ * drawing a hairline + soft fill, so a second bordered card on top reads as
+ * heavy "box-in-box". Strip the inner chrome; rely on the accent-tinted
+ * `Subagents` header label and indented list to mark the child branch. */
+.tool-call-body .subagent-panel {
+  margin-top: 0;
+  border: 0;
+  background: transparent;
+  border-radius: 0;
+}
+
+.tool-call-body .subagent-panel > .subagent-panel-summary {
+  border-bottom: 0;
+}
+
+.tool-call-body .subagent-panel-summary {
+  padding-left: 0;
+  padding-right: 0;
+  color: color-mix(in srgb, var(--accent) 65%, var(--text-muted));
+}
+
+.tool-call-body .subagent-panel-list {
+  /* Keep the chain-of-thought rail (padding-left below) when nested. */
+  padding-right: 0;
+}
+
+/* Inert header — no longer a <details> summary, so no pointer cursor and no
+ * disclosure triangle. The panel is a static live-activity block, not a
+ * collapsible disclosure ("点不开"). */
+.subagent-panel-summary {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 10px;
+  cursor: default;
+  list-style: none;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+  border-radius: var(--r-md);
+}
+
+.subagent-panel > .subagent-panel-summary {
+  border-bottom: 1px solid color-mix(in srgb, var(--accent) 18%, var(--line-soft));
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+
+/* Accent-tinted agent glyph chip — marks the row as "a launched child", the
+ * same visual cue as the card's accent border. */
+.subagent-panel-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-left: -2px;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  color: color-mix(in srgb, var(--accent) 80%, var(--text));
+}
+
+.subagent-panel-label {
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* Short task handle — monospace so the id reads as an identifier, muted so the
+ * "Subagent" label stays the focus. */
+.subagent-panel-id {
+  font-family: var(--font-code);
+  font-size: 10px;
+  color: var(--text-faint);
+  letter-spacing: 0.02em;
+}
+
+.subagent-panel-count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 16px;
+  margin-left: auto;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--panel-soft);
+  color: var(--text-muted);
+  font-size: 10px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Subagent rows reuse the regular .tool-call disclosure markup; the only extra
+   is the body's jump-to-workspace link (the full activity lives there, not
+   inline). Styled as a quiet accent text-button. */
+.subagent-open-workspace {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 2px 0;
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+
+.subagent-open-workspace:hover {
+  text-decoration: underline;
+}
+
+.subagent-panel-list {
+  display: flex;
+  flex-direction: column;
+  gap: 7px;
+  margin: 2px 0 4px 5px;
+  /* Agent-trace rail: a left border with step dots hanging off it, matching
+   * the reasoning-body rail above. */
+  padding: 4px 0 6px 14px;
+  border-left: 1px solid var(--line);
+  font-family: var(--font-code);
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--text-muted);
+}
+
+.subagent-row {
+  display: grid;
+  grid-template-columns: 8px 1fr;
+  gap: 8px;
+  align-items: baseline;
+  overflow: hidden;
+}
+
+.subagent-row.tool-row {
+  grid-template-columns: 8px auto 1fr auto;
+}
+
+/* Step indicator — a small muted dot on the rail, in place of the per-row
+ * emoji marker. */
+.subagent-row-icon {
+  align-self: start;
+  margin-top: 5px;
+  width: 6px;
+  height: 6px;
+  font-size: 0;
+  line-height: 0;
+}
+.subagent-row-icon::before {
+  content: "";
+  display: block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: color-mix(in srgb, var(--text-muted) 45%, transparent);
+}
+
+/* Tool rows carry their status in the rail dot's COLOR (green done / amber
+ * running / red failed) instead of a loud uppercase label on every line —
+ * turns the list into a quiet checklist. */
+.subagent-row.tool-row[data-status="completed"] .subagent-row-icon::before {
+  background: var(--success);
+}
+.subagent-row.tool-row[data-status="running"] .subagent-row-icon::before {
+  background: var(--warning);
+}
+.subagent-row.tool-row[data-status="failed"] .subagent-row-icon::before {
+  background: var(--danger);
+}
+
+/* Plain-text misc rows (loop-limit / loop-repair) carry no icon or columns —
+ * span full width instead of being squeezed into the dot column. Tail rows
+ * (data-tail) are excluded: they keep the dot + text grid. */
+.subagent-row-misc {
+  display: block;
+  color: var(--warning);
+}
+
+.subagent-row-name {
+  color: var(--text);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+/* Count chip for a folded run of identical calls (read_file ×3). Muted pill so
+ * it reads as metadata next to the tool name, not another status. */
+.subagent-row-multi {
+  margin-left: 5px;
+  padding: 0 5px;
+  border-radius: var(--r-pill);
+  background: var(--panel-soft);
+  color: var(--text-muted);
+  font-size: 9.5px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Tool target stays a single ellipsised line — it's a path/identifier and the
+ * status chip sits to its right, so wrapping would shove the chip around. */
+.subagent-row-target {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* The reasoning/text tail is prose, not an identifier: render it in the UI
+ * font (the list is monospace for tool rows) and let it wrap so it reads as a
+ * few lines of the subagent's rolling output instead of one truncated line.
+ * Clamp to keep the inline mirror compact. */
+.subagent-row-tail-text {
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  word-break: break-word;
+  font-family: var(--font-ui);
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* Reasoning reads as the agent's private "thinking" — dimmer + italic so it's
+ * visually subordinate to the actual output text below it. */
+.subagent-row.tail-reasoning .subagent-row-tail-text {
+  font-style: italic;
+  color: var(--text-faint);
+}
+
+/* Tail rows align the dot to the first text line (prose wraps to several). */
+.subagent-row[data-tail] { align-items: start; }
+
+/* Only rendered for running / failed now (completed is implied by the dot).
+ * Kept low-key — lowercase, faint-tinted — so it annotates without shouting. */
+.subagent-row-status {
+  align-self: center;
+  font-size: 10px;
+  letter-spacing: 0.02em;
+  color: var(--text-faint);
+}
+
+.subagent-row-status[data-status="failed"]  { color: color-mix(in srgb, var(--danger) 80%, var(--text-faint)); }
+.subagent-row-status[data-status="running"] { color: color-mix(in srgb, var(--warning) 80%, var(--text-faint)); }
+
+/* ---------- Permission prompt (inline HITL fallback) --------------------
+ * Box style with warning-tinted hairline + soft fill — same visual family
+ * as tool-call.status-pending, since both are "needs your attention" cues. */
+
+.entry.permission {
+  padding: 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, var(--line-soft));
+  border-radius: var(--r-md);
+  background: color-mix(in srgb, var(--warning-soft) 50%, var(--bg));
+}
+
+.entry.permission .actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+/* ---------- Narrow chat pane (≤ 720px) ---------------------------------- */
+
+@media (max-width: 720px) {
+  /* --chat-pad-x is fluid (clamp, see top of file) so it keeps tracking the
+   * window continuously here — no width snap at this breakpoint. Only the meta
+   * chips drop out of the narrow layout. */
+  .chat-header-meta,
+  .tool-meta      { display: none; }
+}
+
+/* =============================================================================
+ * Lively layer — restrained color rhythm + micro-motion on top of the quiet
+ * "inline log" base. All rules below are additive: deleting this section
+ * restores the original look.
+ *
+ * Design intent: introduce one warm spark color (peach/amber, nods to the
+ * Reina monochrome theme) and use it sparingly on three contact points:
+ *   • tool-icon  — soft circular halo behind the status icon (chip rhythm)
+ *   • Thoughts   — radial warm wash + spark glow behind the ✦
+ *   • user bubble — solid sent-bubble color
+ * Plus a handful of hover/streaming micro-interactions. Nothing animates on
+ * scroll, nothing flashes on first paint. The document stays a document.
+ * ========================================================================== */
+
+:root {
+  /* Warm spark — peach/amber by default. Used at low opacity through
+   * color-mix so it never reads as a saturated accent on its own. The
+   * User bubble color is separate so Thoughts/tool styling is not affected
+   * by the bubble color picker. */
+  --chat-spark: #f0a574;
+  --sent-bubble-color: #475569;
+  --sent-bubble-text: #f8fafc;
+}
+
+/* Per-theme / per-style defaults for the internal spark color. */
+:root[data-theme="light"] {
+  --chat-spark: #e88e4a;
+  --sent-bubble-color: #e8edf4;
+  --sent-bubble-text: var(--text-strong);
+}
+:root[data-style="tokyo"]      { --chat-spark: #ff9e64; }
+:root[data-style="apple"]      { --chat-spark: #ff9f0a; }
+:root[data-style="vercel"]     { --chat-spark: var(--accent); } /* monochrome preset stays mono */
+
+/* User-picked spark colors. Keep the swatches saturated enough to read at
+ * the low (10–22%) opacities they're mixed at — desaturated colors vanish
+ * in the soft tints. The mono option falls through to the theme accent. */
+:root[data-chat-spark="peach"]    { --chat-spark: #f0a574; }
+:root[data-chat-spark="sakura"]   { --chat-spark: #f7a8c0; }
+:root[data-chat-spark="violet"]   { --chat-spark: #b89dff; }
+:root[data-chat-spark="mint"]     { --chat-spark: #7dd6b1; }
+:root[data-chat-spark="sky"]      { --chat-spark: #8fc8ff; }
+:root[data-chat-spark="amber"]    { --chat-spark: #ffc764; }
+:root[data-chat-spark="mono"]     { --chat-spark: var(--accent); }
+
+:root[data-sent-bubble="sky"]    { --sent-bubble-color: #4f7fd1; }
+:root[data-sent-bubble="ocean"]  { --sent-bubble-color: #356b8f; }
+:root[data-sent-bubble="slate"]  { --sent-bubble-color: #475569; }
+:root[data-sent-bubble="steel"]  { --sent-bubble-color: #5b6472; }
+:root[data-sent-bubble="graphite"] {
+  --sent-bubble-color: #242424;
+}
+:root[data-sent-bubble="mono"]   { --sent-bubble-color: var(--accent); }
+
+:root:is([data-theme="light"], [data-theme="porcelain"], [data-theme="snow"], [data-theme="silver"])[data-sent-bubble="sky"] {
+  --sent-bubble-color: #dbeafe;
+  --sent-bubble-text: #1e3a8a;
+}
+
+:root:is([data-theme="light"], [data-theme="porcelain"], [data-theme="snow"], [data-theme="silver"])[data-sent-bubble="ocean"] {
+  --sent-bubble-color: #dff3fb;
+  --sent-bubble-text: #164e63;
+}
+
+:root:is([data-theme="light"], [data-theme="porcelain"], [data-theme="snow"], [data-theme="silver"])[data-sent-bubble="slate"] {
+  --sent-bubble-color: #e8edf4;
+  --sent-bubble-text: #243244;
+}
+
+:root:is([data-theme="light"], [data-theme="porcelain"], [data-theme="snow"], [data-theme="silver"])[data-sent-bubble="steel"] {
+  --sent-bubble-color: #e5e7eb;
+  --sent-bubble-text: #2f3743;
+}
+
+:root:is([data-theme="light"], [data-theme="porcelain"], [data-theme="snow"], [data-theme="silver"])[data-sent-bubble="graphite"] {
+  --sent-bubble-color: var(--panel-soft);
+  --sent-bubble-text: var(--text-strong);
+}
+
+:root:is([data-theme="light"], [data-theme="porcelain"], [data-theme="snow"], [data-theme="silver"])[data-sent-bubble="mono"] {
+  --sent-bubble-color: color-mix(in srgb, var(--accent) 10%, var(--panel));
+  --sent-bubble-text: var(--text-strong);
+}
+
+/* ---------- Tool icon — bare glyph (no coin chip), matches Thoughts ✦. *
+ * Status color comes from the base .tool-call.status-* rules above. */
+
+.tool-icon {
+  position: relative;
+  width: 16px;
+  height: 16px;
+  border-radius: 0;
+  background: transparent;
+}
+
+.tool-call-summary:hover .tool-icon {
+  transform: scale(1.08);
+  transition: transform 120ms ease;
+}
+
+/* Inline mode keeps the row flat; the icon coin is the entire bit of color. */
+.tool-call.tool-call-inline .tool-icon {
+  width: 16px;
+  height: 16px;
+}
+
+/* ---------- Tool row micro-motion --------------------------------------- *
+ * Hover slides the row 1px to the right — a quiet "I'm interactive" cue
+ * that respects the inline-log feel. */
+
+.tool-call > .tool-call-summary {
+  transition: background-color 120ms ease, transform 140ms ease;
+}
+
+.tool-call:not([open]) > .tool-call-summary:hover {
+  transform: translateX(1px);
+}
+
+/* ---------- Thoughts (assistant-reasoning) ------------------------------ *
+ * Replace the flat panel-soft fill with a soft warm wash that fades from
+ * the spark color (top-left) into the original panel-soft. Behind the ✦
+ * sits a faint radial glow — visible at rest, breathing while streaming. */
+
+.entry.assistant .assistant-reasoning .reasoning-icon {
+  width: 16px;
+  height: 16px;
+  font-size: 14px;
+}
+
+/* Streaming: keep the icon pulse, no halo breath. */
+.entry.assistant .assistant-reasoning.reasoning-streaming .reasoning-icon::before {
+  display: none;
+}
+
+@keyframes reasoning-halo-breath {
+  0%, 100% { opacity: 0.45; transform: scale(0.92); }
+  50%      { opacity: 1;    transform: scale(1.12); }
+}
+
+/* Expand reveal — the body slides in from above when [open] flips on.
+ * Pure CSS, no JS coordination needed. */
+.entry.assistant .assistant-reasoning[open] .assistant-reasoning-body {
+  animation: reasoning-body-in 220ms ease-out;
+}
+
+@keyframes reasoning-body-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---------- Streaming block reveal (learned from Alma) ------------------- *
+ * While an assistant answer is live-streaming, each newly-appended top-level
+ * block fades in with a small lift. Only NEW nodes animate: react-markdown
+ * reconciles already-committed blocks in place, so their one-shot insertion
+ * animation never replays as the stream grows. Lists are excluded at the
+ * container level — their subtree can rebuild as items accumulate, and
+ * re-animating the whole list reads as a flash — list ITEMS animate
+ * individually instead. The committed entry never carries .stream-reveal
+ * (ChatEntry only adds it on the live overlay), so history replay and the
+ * finalize swap stay static. Opacity+transform only; GPU-cheap. */
+.entry.assistant .assistant-body.stream-reveal > :not(ol, ul),
+.entry.assistant .assistant-body.stream-reveal > :is(ol, ul) > li {
+  animation: stream-block-in 260ms cubic-bezier(0.16, 1, 0.3, 1) backwards;
+}
+
+@keyframes stream-block-in {
+  from { opacity: 0; transform: translate3d(0, 4px, 0); }
+  to   { opacity: 1; transform: translate3d(0, 0, 0); }
+}
+
+/* ---------- User bubble color ------------------------------------------ *
+ * Keep the text bubble on the same sent-bubble token across chat vibes. */
+
+.user-message-body {
+  background: var(--sent-bubble-color);
+  border: 0;
+  border-radius: 11px;
+  color: var(--sent-bubble-text);
+  box-shadow: none;
+}

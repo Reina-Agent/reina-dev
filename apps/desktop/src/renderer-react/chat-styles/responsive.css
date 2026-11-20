@@ -1,0 +1,109 @@
+@media (max-width: 980px) {
+  .app {
+    --session-pane-width: 280px;
+    --main-layout-padding: 10px;
+    --main-layout-gap: 0px;
+    grid-template-columns: minmax(0, 1fr) 0 0;
+    padding: 0;
+  }
+
+  .main-surface {
+    border-radius: 0;
+    border-inline: 0;
+  }
+
+  .main-layout {
+    grid-template-columns: minmax(240px, var(--session-pane-width)) 1px minmax(0, 1fr) var(--task-pane-resizer-col, 0px) var(--task-pane-col, 0px);
+  }
+
+  .workspace-pane-resizer {
+    display: none;
+  }
+
+  /* At laptop widths the Workspace becomes the full app surface rather than
+     squeezing Chat below a usable reading width. Its own close button restores
+     the conversation. */
+  .app:not(.workspace-collapsed) {
+    grid-template-columns: 0 0 minmax(0, 1fr);
+  }
+
+  .main-surface {
+    opacity: 1;
+    visibility: visible;
+    transition:
+      opacity 180ms ease,
+      visibility 0s linear;
+  }
+
+  .app:not(.workspace-collapsed) .main-surface {
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      opacity 180ms ease,
+      visibility 0s linear 240ms;
+  }
+}
+
+@media (max-width: 720px) {
+  .app {
+    --topbar-height: 38px;
+    --session-pane-width: 0px;
+  }
+
+  body[data-window="settings"] {
+    --topbar-height: 38px;
+  }
+
+  /* The second selector out-specifies the main-window skin's grid rule
+     (style.css `body[data-window="main"] .main-layout`, which clamps the
+     first track to ≥240px). Without it the skin kept the sidebar TRACK
+     reserved while the rule below hid the PANE — a dead 250px gap left of
+     the chat whenever the window narrowed under 720px. */
+  .main-layout,
+  body[data-window="main"] .app .main-layout {
+    grid-template-columns: 0 0 minmax(0, 1fr) 0 0;
+    column-gap: 0;
+  }
+
+  .session-pane,
+  .session-pane-resizer,
+  .task-pane,
+  .task-pane-resizer {
+    display: none;
+  }
+
+  .topbar-title-wrap {
+    justify-content: flex-start;
+    padding-inline: 8px;
+  }
+
+  .topbar-end .topbar-workspace-toggle {
+    width: 30px;
+    min-width: 30px;
+    padding: 0;
+    border-color: transparent;
+    background: transparent;
+  }
+
+  .topbar-workspace-label {
+    display: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .topbar-title-wrap .chat-header-meta {
+    display: none;
+  }
+
+  .topbar-start {
+    padding-left: 4px;
+    gap: 1px;
+  }
+
+  .topbar-start .title-icon-button,
+  .topbar-end .topbar-workspace-toggle {
+    width: 28px;
+    min-width: 28px;
+  }
+}

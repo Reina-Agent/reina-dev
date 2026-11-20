@@ -1,0 +1,1 @@
+export const description = "List every offloaded-memory chunk in this session (id + created-at + token count + tool hints + topic line, oldest→newest). Use when the inline 'Offloaded memory' index says 'N older chunk(s) hidden' and you suspect one holds a detail you need; pair with `recall_memory_chunk(id)` to fetch a body.";

@@ -1,0 +1,2392 @@
+.composer {
+  /* In-flow positioning so the HITL dock (sibling above us) is never
+     occluded. `position: relative` is still set so the slash popover can
+     anchor via `bottom: calc(100% + 6px)`. */
+  position: relative;
+  align-self: center;
+  /* Line the input box up edge-for-edge with the message column. The messages
+     are 92% centered INSIDE the timeline's padded + scrollbar-reserved box;
+     --chat-aligned-width (chat.css) reproduces that exact rendered width here,
+     where the composer sits directly in the chat-pane. Both are margin-auto
+     centered on the same axis, so equal width ⇒ matching left/right edges. */
+  width: var(--chat-aligned-width);
+  max-width: var(--chat-aligned-width);
+  margin: 0 auto 18px;
+  border: 0;
+  border-radius: 16px;
+  background: var(--composer-bg);
+  padding: 13px 14px 10px;
+  box-sizing: border-box;
+  overflow: visible;
+  box-shadow: none;
+  transition: background-color 160ms ease;
+  --composer-mode-accent: #fcfcfc;
+  --composer-mode-accent-hover: #ffffff;
+  --composer-mode-accent-contrast: #111111;
+  --composer-halo-ring: var(--composer-mode-accent);
+  --composer-halo-glow: rgba(252, 252, 252, 0.24);
+}
+
+.composer:focus-within {
+  background: var(--composer-bg-focus);
+  box-shadow: none;
+}
+
+/* Light themes put a white composer on a near-white page, so the borderless
+ * look loses its edges. Restore a subtle frame there — var(--composer-border)
+ * resolves to a visible gray in every light variant. Dark themes stay
+ * borderless. box-sizing: border-box keeps the 1px from shifting layout. */
+:root[data-theme="light"] .composer,
+:root[data-theme="porcelain"] .composer,
+:root[data-theme="snow"] .composer,
+:root[data-theme="silver"] .composer {
+  border: 1px solid var(--composer-border);
+}
+
+body[data-mode="ask"] .composer {
+  --composer-mode-accent: #fcfcfc;
+  --composer-mode-accent-hover: #ffffff;
+  --composer-mode-accent-contrast: #111111;
+  --composer-halo-ring: var(--composer-mode-accent);
+  --composer-halo-glow: rgba(252, 252, 252, 0.24);
+}
+/* The :root prefix lifts these to (0,3,1) so the colored mode accents
+   survive the (0,3,0) light-theme override
+   below — they read fine on light and carry meaning. */
+:root body[data-mode="auto-edit"] .composer {
+  --composer-mode-accent: #83d19a;
+  --composer-mode-accent-hover: #96e0aa;
+  --composer-mode-accent-contrast: #0f3d22;
+  --composer-halo-ring: var(--composer-mode-accent);
+  --composer-halo-glow: rgba(131, 209, 154, 0.3);
+}
+:root body[data-mode="plan"] .composer {
+  --composer-mode-accent: #8fa6ff;
+  --composer-mode-accent-hover: #a4b6ff;
+  --composer-mode-accent-contrast: #13204f;
+  --composer-halo-ring: var(--composer-mode-accent);
+  --composer-halo-glow: rgba(143, 166, 255, 0.28);
+}
+:root body[data-mode="bypass"] .composer {
+  --composer-mode-accent: #e07162;
+  --composer-mode-accent-hover: #ef8273;
+  --composer-mode-accent-contrast: #ffffff;
+  --composer-halo-ring: var(--composer-mode-accent);
+  --composer-halo-glow: rgba(224, 113, 98, 0.32);
+}
+
+/* Light themes: the neutral (default/ask) mode accent above is near-white —
+   an invisible mode pill on a white composer. Follow the theme
+   accent (near-black in every light variant) with white contrast instead.
+   The auto-edit green / bypass red stay — their blocks above carry :root to
+   out-rank this override. */
+:root[data-theme="light"] .composer,
+:root[data-theme="porcelain"] .composer,
+:root[data-theme="snow"] .composer,
+:root[data-theme="silver"] .composer,
+:root[data-theme="light"] body[data-mode="ask"] .composer,
+:root[data-theme="porcelain"] body[data-mode="ask"] .composer,
+:root[data-theme="snow"] body[data-mode="ask"] .composer,
+:root[data-theme="silver"] body[data-mode="ask"] .composer {
+  --composer-mode-accent: var(--accent);
+  --composer-mode-accent-hover: color-mix(in srgb, var(--accent) 84%, #ffffff);
+  --composer-mode-accent-contrast: #ffffff;
+  --composer-halo-ring: var(--composer-mode-accent);
+  --composer-halo-glow: color-mix(in srgb, var(--accent) 22%, transparent);
+}
+
+body[data-mode="bypass"] .composer:focus-within {
+  box-shadow: none;
+}
+
+.context-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.context-bar[hidden] {
+  display: none;
+}
+
+/* Pasted/dropped images staged in the composer. Each chip is a 56px square
+   thumbnail with a hover-revealed remove (×) button. Compact enough to
+   stack two rows without dominating the composer vertically. */
+.attachments-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 8px;
+}
+
+.attachments-bar[hidden] {
+  display: none;
+}
+
+.attachment-chip {
+  position: relative;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+  background: var(--panel-soft);
+  border: 1px solid var(--line);
+}
+
+.attachment-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.attachment-remove {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 50%;
+  background: var(--overlay-bg);
+  color: var(--text-strong);
+  font-size: 13px;
+  line-height: 1;
+  padding: 0;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 80ms ease;
+  touch-action: manipulation;
+}
+
+.attachment-remove:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 1px;
+}
+
+.attachment-chip:hover .attachment-remove,
+.attachment-chip:focus-within .attachment-remove {
+  opacity: 1;
+}
+
+.attachment-chip.attachment-doc {
+  width: auto;
+  min-width: 120px;
+  max-width: 220px;
+  height: 56px;
+  padding: 0 26px 0 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.attachment-badge {
+  flex-shrink: 0;
+  padding: 2px 6px;
+  border-radius: var(--r-pill);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.04em;
+}
+
+.attachment-name {
+  min-width: 0;
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-chip.attachment-file {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: auto;
+  min-width: 160px;
+  max-width: min(100%, 280px);
+  height: 56px;
+  padding: 7px 30px 7px 7px;
+  border-radius: var(--r-md);
+}
+
+.attachment-file-icon {
+  display: grid;
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: var(--r-sm);
+  background: color-mix(in srgb, var(--panel-soft) 65%, black 35%);
+  color: var(--text-strong);
+}
+
+.attachment-file-icon .icon {
+  width: 20px;
+  height: 20px;
+}
+
+.attachment-file .attachment-name {
+  color: var(--text-strong);
+  font-size: var(--fs-base);
+  font-weight: 600;
+}
+
+.attachment-file .attachment-remove {
+  top: 6px;
+  right: 6px;
+  width: 18px;
+  height: 18px;
+  border: 1px solid var(--line);
+  background: var(--panel);
+  color: var(--text-muted);
+  opacity: 1;
+}
+
+.attachment-file .attachment-remove:hover {
+  color: var(--text-strong);
+}
+
+/* Drop-target highlight for the composer when dragging files over it. */
+.composer.is-drop-target {
+  background: var(--composer-bg-focus);
+}
+
+.queue-panel {
+  /* Keep the queue aligned with the composer while reserving transcript space. */
+  position: relative;
+  z-index: 2;
+  align-self: center;
+  flex-shrink: 0;
+  width: var(--chat-aligned-width);
+  max-width: var(--chat-aligned-width);
+  display: flex;
+  flex-direction: column;
+  margin: 0 auto 8px;
+  padding: 0;
+  overflow: hidden;
+  border: 0;
+  border-radius: 16px;
+  background: var(--composer-bg);
+}
+
+.queue-panel[hidden] {
+  display: none;
+}
+
+.queue-list {
+  max-height: 160px;
+  margin: 0;
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  list-style: none;
+  scrollbar-width: thin;
+}
+
+.queue-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 8px;
+}
+
+.queue-row + .queue-row {
+  border-top: 1px solid color-mix(in srgb, var(--line) 50%, transparent);
+}
+
+.queue-row-dragging {
+  opacity: 0.5;
+}
+
+.queue-drag,
+.queue-drag-placeholder,
+.queue-action {
+  display: inline-flex;
+  flex: 0 0 28px;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--text-muted);
+}
+
+.queue-drag {
+  cursor: grab;
+  user-select: none;
+}
+
+.queue-drag:active {
+  cursor: grabbing;
+}
+
+.queue-body {
+  display: flex;
+  flex: 1;
+  min-width: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.queue-dot {
+  display: inline-flex;
+  flex: 0 0 14px;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+}
+
+.queue-drag svg,
+.queue-action svg,
+.queue-dot svg,
+.queue-drag-placeholder svg {
+  width: 14px;
+  height: 14px;
+}
+
+.queue-text {
+  display: -webkit-box;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  overflow-wrap: anywhere;
+  white-space: normal;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  color: var(--text-muted);
+  font-size: 12px;
+  line-height: 1.25;
+  font-style: normal;
+}
+
+.queue-actions {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 2px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+}
+
+.queue-row:hover .queue-actions,
+.queue-row:focus-within .queue-actions,
+.queue-row-menu-open .queue-actions,
+.queue-row[data-menu-open="true"] .queue-actions {
+  opacity: 1;
+  pointer-events: auto;
+}
+
+.queue-action {
+  flex-basis: 32px;
+  width: 32px;
+  height: 32px;
+  cursor: pointer;
+}
+
+.queue-drag:hover,
+.queue-action:hover:not(:disabled) {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.queue-drag:focus-visible,
+.queue-action:focus-visible,
+.queue-menu-item:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.queue-action:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.queue-action-danger:hover:not(:disabled) {
+  color: var(--danger);
+  background: var(--danger-soft);
+}
+
+@media (hover: none) {
+  .queue-actions {
+    opacity: 1;
+    pointer-events: auto;
+  }
+}
+
+/* Portalled so scrolling queue rows cannot clip the action menu. */
+.queue-menu {
+  position: fixed;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  width: 176px;
+  padding: 4px;
+  background: var(--panel-elevated);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  box-shadow: 0 4px 16px rgb(0 0 0 / 16%);
+}
+
+.queue-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 32px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  padding: 6px 8px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.queue-menu-item:hover:not(:disabled) {
+  background: var(--panel-hover);
+}
+
+.queue-menu-item:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.queue-menu-item .icon {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.queue-menu-separator {
+  height: 1px;
+  margin: 4px;
+  background: var(--line);
+}
+
+.context-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  max-width: 240px;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--control-bg);
+  color: var(--text);
+  padding: 0 8px;
+  font-size: var(--fs-xs);
+}
+
+.context-chip span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.context-chip small {
+  color: var(--text-faint);
+}
+
+/* Keep quote context on its own compact row so long drafts retain the full
+   composer width. Skills still flow inline with the textarea below. */
+.composer-input {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+
+.composer-input-line {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 6px;
+  min-width: 0;
+  width: 100%;
+}
+
+.composer-quote {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: min(100%, 320px);
+  height: 24px;
+  overflow: hidden;
+  padding: 0 7px;
+  border-radius: var(--r-pill);
+  background: var(--control-bg);
+  color: var(--text-muted);
+  font-size: var(--fs-base);
+  line-height: 1;
+}
+
+.composer-quote > svg {
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  fill: currentColor;
+  opacity: 0.8;
+}
+
+.composer-quote > span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-quote > button {
+  display: grid;
+  width: 18px;
+  height: 18px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-faint);
+  font: inherit;
+  cursor: var(--cursor-interactive, pointer);
+}
+
+.composer-quote > button:hover {
+  background: var(--hover);
+  color: var(--text);
+}
+
+/* Staged-skill token rendered inside the input row: plain accent text with the
+   cube glyph — no box, no border, no fill. The × only fades in on hover.
+   Inserted before the textarea by renderSkillTagsView. */
+.skill-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  max-width: 240px;
+  color: var(--accent);
+  font-size: var(--fs-base);
+  line-height: 1.4;
+  white-space: nowrap;
+}
+
+.skill-tag .icon {
+  width: 15px;
+  height: 15px;
+  flex-shrink: 0;
+}
+
+.skill-tag-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer textarea {
+  flex: 1 1 220px;
+  min-width: min(100%, 200px);
+  width: auto;
+  height: auto;
+  min-height: 24px;
+  max-height: 180px;
+  field-sizing: content;
+  resize: none;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: var(--fs-base);
+  line-height: 1.4;
+  padding: 0;
+  overflow-y: auto;
+  overflow-x: hidden;
+  scrollbar-gutter: stable;
+}
+
+.slash-popover {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(100% + 6px);
+  z-index: 4;
+  max-height: min(380px, calc(100vh - 180px));
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-faint) 46%, transparent) transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--panel-elevated);
+  box-shadow: none;
+}
+
+.slash-popover::-webkit-scrollbar {
+  width: 10px;
+}
+
+.slash-popover::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.slash-popover::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--text-faint) 46%, transparent);
+  background-clip: content-box;
+}
+
+.slash-popover[hidden] {
+  display: none;
+}
+
+.slash-row {
+  width: 100%;
+  min-height: 34px;
+  display: grid;
+  grid-template-columns: 110px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.slash-row-control,
+.slash-row-skill {
+  grid-template-columns: 18px 170px minmax(0, 1fr) auto;
+}
+
+.slash-row .icon {
+  width: 15px;
+  height: 15px;
+  color: var(--text-muted);
+}
+
+.slash-row:last-child {
+  border-bottom: 0;
+}
+
+.slash-row:hover,
+.slash-row:focus,
+.slash-row.active {
+  background: var(--panel-hover);
+  outline: 0;
+}
+
+.slash-row strong {
+  color: var(--accent);
+  font-weight: 500;
+}
+
+.slash-row span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.slash-row small {
+  color: var(--text-faint);
+}
+
+.slash-section-title {
+  padding: 8px 10px 4px;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+
+/* Skill rows widen the name column and let the description wrap to a
+   second line — skill descriptions are longer than command titles. */
+.slash-row-skill {
+  grid-template-columns: 18px 170px minmax(0, 1fr) auto;
+}
+
+.slash-row-skill span {
+  white-space: normal;
+  line-height: 1.35;
+  -webkit-line-clamp: 2;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.slash-empty {
+  padding: 10px 12px;
+  color: var(--text-faint);
+  font-size: 12.5px;
+}
+
+.composer-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+/* Token usage ring — sits inside .composer-selects next to the model picker.
+   The arc fills as the session approaches the model's context window; color
+   ramps ok → warning → danger via data-level (set in session.js). */
+.composer-usage {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 24px;
+  width: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--text-muted);
+  font-family: inherit;
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background 120ms ease;
+}
+
+.composer-usage[hidden] { display: none; }
+
+.composer-usage .usage-ring-label {
+  display: none;
+}
+
+.composer-usage:hover {
+  background: var(--control-bg);
+  color: var(--text);
+}
+
+.composer-usage .usage-ring {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+}
+
+.composer-usage .usage-ring-track {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 3;
+}
+
+.composer-usage .usage-ring-fill {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 3;
+  stroke-linecap: round;
+  transition: stroke-dasharray 240ms ease, stroke 240ms ease;
+}
+
+.composer-usage[data-level="warning"] .usage-ring-fill { stroke: var(--warning); }
+.composer-usage[data-level="warning"] { color: var(--warning); }
+.composer-usage[data-level="danger"] .usage-ring-fill { stroke: var(--danger); }
+.composer-usage[data-level="danger"] { color: var(--danger); }
+
+:root[data-theme="light"] .composer-usage .usage-ring-track {
+  stroke: #d4dbe5;
+}
+
+:root[data-theme="light"] .composer-usage .usage-ring-fill {
+  stroke: #5b8def;
+}
+
+.usage-popover {
+  position: fixed;
+  z-index: 60;
+  width: min(360px, calc(100vw - 20px));
+  /* Cap to the viewport so an expanded breakdown scrolls inside the popover
+     instead of overflowing off-screen (SESSION getting cut off below). */
+  max-height: calc(100vh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 8px 10px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--panel-elevated);
+  box-shadow: none;
+  color: var(--text);
+}
+
+.usage-popover[hidden] {
+  display: none;
+}
+
+.usage-popover-section {
+  padding-top: 6px;
+  margin-top: 6px;
+  border-top: 1px solid var(--line);
+}
+
+.usage-popover-section:first-of-type {
+  margin-top: 0;
+  padding-top: 0;
+  border-top: 0;
+}
+
+.usage-popover-section h3 {
+  margin: 0 0 4px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  text-transform: uppercase;
+}
+
+.usage-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 3px 10px;
+  font-size: var(--fs-xs);
+}
+
+.usage-grid dt {
+  min-width: 0;
+  color: var(--text-muted);
+}
+
+.usage-grid dd {
+  margin: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-tool-list {
+  margin-top: 8px;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  line-height: 1.4;
+  word-break: break-word;
+}
+
+/* ── Context-window breakdown ───────────────────────────────────
+   Palette: a small set of semantically-stable category colors.
+   Reserved tiers (deferred tools, autocompact buffer, free space)
+   use the cool greys so the active categories pop. */
+.usage-popover {
+  --usage-c1: #5b8def; /* system prompt base */
+  --usage-c2: #7c5cff; /* skills */
+  --usage-c3: #9b6bff; /* user rules */
+  --usage-c4: #4ab8d6; /* core tools */
+  --usage-c5: #00a597; /* mcp tools */
+  --usage-c6: #5fb878; /* messages */
+  --usage-c7: #c19a3a; /* observations */
+  --usage-c8: #c46d6d; /* reminders */
+  --usage-c9: #d08a3e; /* last output */
+  --usage-ca: #b08a52; /* overhead (provider total minus estimate) */
+  --usage-cb: #4e576a; /* autocompact buffer */
+  --usage-cf: #2f3540; /* free space */
+}
+
+:root[data-theme="light"] .usage-popover {
+  --usage-c1: #5b8def; /* system prompt base */
+  --usage-c2: #7467df; /* skills */
+  --usage-c3: #8b72e8; /* user rules */
+  --usage-c4: #44a9c8; /* core tools */
+  --usage-c5: #0f9f8e; /* mcp tools */
+  --usage-c6: #56a86f; /* messages */
+  --usage-c7: #b88b2f; /* observations */
+  --usage-c8: #b65f62; /* reminders */
+  --usage-c9: #c47a2e; /* last output */
+  --usage-ca: #b08a52; /* overhead (provider total minus estimate) */
+  --usage-cb: #94a3b8; /* autocompact buffer */
+  --usage-cf: #e2e8f0; /* free space */
+}
+
+.usage-context {
+  padding-top: 0;
+}
+
+.usage-context-head {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 14px;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 5px;
+  cursor: pointer;
+  border-radius: var(--r-sm);
+}
+
+.usage-context-head-label {
+  min-width: 0;
+  font-weight: 650;
+  font-size: var(--fs-sm);
+}
+
+.usage-context-head-value {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.usage-context-head-chevron {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.usage-context-head:hover {
+  color: var(--text-strong);
+}
+
+.usage-context-head:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.usage-context-bar {
+  display: flex;
+  width: 100%;
+  height: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  background: var(--usage-cf);
+  margin-bottom: 5px;
+}
+
+.usage-context.is-collapsed .usage-context-bar {
+  margin-bottom: 0;
+}
+
+.usage-context-bar-seg {
+  height: 100%;
+  min-width: 1px;
+  display: block;
+}
+
+.usage-context-bar-seg.is-reserved {
+  opacity: 0.35;
+}
+
+.usage-context-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+  font-size: var(--fs-xs);
+}
+
+.usage-context-list[hidden] {
+  display: none;
+}
+
+.usage-context-rowwrap {
+  display: contents;
+}
+
+.usage-context-row {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 6px;
+  padding: 1px 3px;
+  border-radius: var(--r-sm);
+  cursor: default;
+}
+
+.usage-context-row.is-expandable {
+  cursor: pointer;
+}
+
+.usage-context-row.is-expandable:hover {
+  background: var(--panel-hover);
+}
+
+.usage-context-row.is-reserved .usage-context-label,
+.usage-context-row.is-reserved .usage-context-tokens,
+.usage-context-row.is-reserved .usage-context-percent {
+  color: var(--text-muted);
+}
+
+/* Chevron lives inside the label so it stays next to the text. */
+.usage-context-row:not(.is-expandable) .usage-context-chevron {
+  display: none;
+}
+
+.usage-context-chevron {
+  display: inline-block;
+  width: 12px;
+  margin-left: 3px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1;
+}
+
+.usage-context-bullet {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  border: 1.5px solid transparent;
+  justify-self: center;
+}
+
+.usage-context-label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usage-context-label-text {
+  min-width: 0;
+}
+
+.usage-context-tokens {
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xs);
+}
+
+.usage-context-percent {
+  color: var(--text-muted);
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xs);
+  min-width: 40px;
+  text-align: right;
+}
+
+.usage-context-sublist {
+  margin: 1px 0 4px 28px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: var(--fs-xs);
+}
+
+.usage-context-subrow {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 1px 3px;
+  color: var(--text-muted);
+}
+
+.usage-context-subrow-more {
+  color: var(--text-faint);
+}
+
+.usage-context-subname {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.usage-context-subtokens {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Selects push to the right, sitting next to the send/stop buttons. Each
+   reads as a quiet pill: subtle icon + value, single chevron. Inspired by
+   Claude Code's "Bypass permissions" composer pill. */
+.composer-selects {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  margin-left: auto;
+  min-width: 0;
+}
+
+.select-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 26px;
+  max-width: 160px;
+  padding: 0 9px;
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid transparent;
+  font-size: var(--fs-xs);
+  border-radius: var(--r-sm);
+  cursor: pointer;
+  transition: color 120ms ease, background 120ms ease, border-color 120ms ease;
+}
+
+.select-button:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.select-button:focus-visible,
+.composer-attach:focus-visible,
+.send-button:focus-visible {
+  outline: 2px solid var(--composer-mode-accent);
+  outline-offset: 2px;
+}
+
+.select-button [data-role="label"] {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.select-button .select-icon {
+  width: 13px;
+  height: 13px;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.select-button:hover .select-icon {
+  color: var(--text-muted);
+}
+
+.select-button .composer-provider-logo {
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  overflow: hidden;
+  border-radius: 0;
+  background: transparent;
+  color: inherit;
+  box-shadow: none;
+}
+
+.composer-provider-logo > img,
+.composer-provider-logo > span {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.composer-provider-logo > img {
+  object-fit: contain;
+}
+
+.composer-provider-logo > span[style] {
+  background: currentColor;
+}
+
+#composer-mode-button {
+  color: var(--text-muted);
+}
+
+/* Align the label and chevron optically with adjacent toolbar controls. */
+#composer-mode-button [data-role="label"],
+#composer-mode-button .caret {
+  transform: translateY(1px);
+}
+
+#composer-mode-button:hover {
+  color: var(--text);
+}
+
+/* Bypass (danger) mode: tint the "Bypass" label so the danger mode stays
+   legible now that the focus halo glow was removed. Color referenced from
+   Synara's --runtime-full-access-accent (its full-access mode): #fe8549 on
+   dark, #e25505 on light. */
+body[data-mode="bypass"] #composer-mode-button,
+body[data-mode="bypass"] #composer-mode-button:hover {
+  color: #fe8549;
+}
+body[data-mode="bypass"] #composer-mode-button .caret {
+  color: color-mix(in srgb, #fe8549 70%, transparent);
+}
+:root[data-theme="light"] body[data-mode="bypass"] #composer-mode-button,
+:root[data-theme="light"] body[data-mode="bypass"] #composer-mode-button:hover {
+  color: #e25505;
+}
+:root[data-theme="light"] body[data-mode="bypass"] #composer-mode-button .caret {
+  color: color-mix(in srgb, #e25505 70%, transparent);
+}
+
+.select-button .caret {
+  width: 10px;
+  height: 10px;
+  color: var(--text-faint);
+  flex-shrink: 0;
+}
+
+.composer-attach {
+  width: 26px;
+  height: 26px;
+  min-width: 26px;
+  border-radius: var(--r-sm);
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  padding: 0;
+  display: grid;
+  place-items: center;
+  cursor: pointer;
+  transition: color 80ms ease, background 80ms ease;
+}
+
+.composer-attach:hover {
+  color: var(--text);
+  background: var(--panel-hover);
+}
+
+.composer-attach .icon {
+  width: 14px;
+  height: 14px;
+}
+
+/* Unified add menu. `.composer-add` stays position:static so the popover clears
+ * the full composer vertically; its frame mirrors the slash-command popover. */
+.composer-add {
+  display: inline-flex;
+  flex: 0 0 auto;
+}
+
+.composer-add-trigger {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: var(--r-pill);
+  background: transparent;
+}
+
+.composer-add-trigger[aria-expanded="true"] {
+  color: var(--text);
+  background: var(--panel-hover);
+}
+
+.composer-active-modes {
+  display: inline-flex;
+  align-items: center;
+  height: 27px;
+  min-width: 0;
+  flex: 0 0 auto;
+}
+
+.composer-mode-divider {
+  width: 1px;
+  height: 17px;
+  margin: 0 5px 0 1px;
+  background: var(--line);
+}
+
+.composer-active-mode-button {
+  max-width: none;
+  font-weight: 500;
+  touch-action: manipulation;
+}
+
+.composer-active-mode-button .icon {
+  width: 14px;
+  height: 14px;
+  color: var(--text-faint);
+}
+
+.composer-add-menu {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: calc(100% + 6px);
+  z-index: 7;
+  max-height: min(380px, calc(100vh - 180px));
+  padding: 0;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--text-faint) 46%, transparent) transparent;
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  background: var(--panel-elevated);
+  box-shadow: none;
+}
+
+.composer-add-menu::-webkit-scrollbar {
+  width: 10px;
+}
+
+.composer-add-menu::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.composer-add-menu::-webkit-scrollbar-thumb {
+  border: 3px solid transparent;
+  border-radius: var(--r-pill);
+  background: color-mix(in srgb, var(--text-faint) 46%, transparent);
+  background-clip: content-box;
+}
+
+.composer-add-section-title {
+  padding: 8px 10px 4px;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+
+.composer-add-skills-title {
+  margin-top: 0;
+  padding-top: 8px;
+}
+
+.composer-add-row {
+  display: grid;
+  grid-template-columns: 18px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  width: 100%;
+  min-height: 34px;
+  padding: 6px 10px;
+  border: 0;
+  border-bottom: 1px solid var(--line-soft);
+  border-radius: 0;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.composer-add-row:hover {
+  background: var(--panel-hover);
+}
+
+.composer-add-row:focus-visible {
+  outline: 0;
+  background: var(--panel-hover);
+}
+
+.composer-add-row:last-child {
+  border-bottom: 0;
+}
+
+.composer-add-row:disabled {
+  color: var(--text-faint);
+  cursor: default;
+  opacity: 0.52;
+}
+
+.composer-add-row:disabled:hover {
+  background: transparent;
+}
+
+.composer-add-row-icon {
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  color: var(--text-muted);
+}
+
+.composer-add-row-icon .icon {
+  width: 15px;
+  height: 15px;
+}
+
+.composer-add-row-copy {
+  display: grid;
+  grid-template-columns: minmax(92px, 120px) minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  min-width: 0;
+}
+
+.composer-add-row-copy strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--accent);
+  font-size: min(var(--fs-sm), 13px);
+  font-weight: 500;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-add-row-copy span {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text-faint);
+  font-size: min(var(--fs-xs), 12px);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-add-mode-row.active .composer-add-row-icon {
+  color: var(--accent);
+}
+
+.composer-add-switch {
+  position: relative;
+  width: 36px;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: var(--r-pill);
+  background: var(--control-bg-strong);
+  transition: background-color 120ms ease, border-color 120ms ease;
+}
+
+.composer-add-switch::after {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--text-faint);
+  transition: transform 120ms ease, background-color 120ms ease;
+}
+
+.composer-add-mode-row.active .composer-add-switch {
+  border-color: var(--accent);
+  background: var(--accent);
+}
+
+.composer-add-mode-row.active .composer-add-switch::after {
+  background: #ffffff;
+  transform: translateX(14px);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .composer-add-switch,
+  .composer-add-switch::after {
+    transition: none;
+  }
+}
+
+.composer-add-empty {
+  padding: 8px 9px 10px 39px;
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+}
+
+/* Send/Stop unified button. data-mode controls the visual state:
+   - "send" (default): neutral circle, up-arrow icon — submits the prompt.
+   - "stop": the same circle, square icon — interrupts the running turn.
+   Both child icons live in the DOM so the swap is paint-only (no
+   layout/reflow during the working↔idle transition). */
+.send-button {
+  width: 30px;
+  height: 30px;
+  min-width: 30px;
+  border-radius: 50%;
+  border: 0;
+  background: light-dark(#18181b, #fcfcfc);
+  background-clip: content-box;
+  padding: 3px;
+  color: light-dark(#ffffff, #111111);
+  display: grid;
+  place-items: center;
+  margin-left: 4px;
+  transition: background-color 120ms ease, color 120ms ease, transform 90ms ease;
+  position: relative;
+}
+
+.send-button:not(:disabled) {
+  box-shadow: none;
+}
+
+.send-button:hover:not(:disabled) {
+  background-color: light-dark(#303033, #e8e8e8);
+}
+
+.send-button:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
+.send-button:disabled {
+  background-color: var(--control-bg-strong);
+  color: var(--text-disabled);
+  opacity: 1;
+  cursor: default;
+}
+
+.send-button .icon {
+  width: 16px;
+  height: 16px;
+}
+
+.send-button .icon-stop {
+  width: 9px;
+  height: 9px;
+  border-radius: 2px;
+  /* Match the send arrow's contrast in both light and dark themes. */
+  background: currentColor;
+}
+
+/* Hide the inactive icon entirely so the active one centers cleanly in
+   the button. We use `display: none` instead of opacity so the grid
+   only ever sees one child. */
+.send-button[data-mode="send"] .icon-stop,
+.send-button[data-mode="stop"] .icon-send,
+.send-button[data-mode="stopping"] .icon-send {
+  display: none;
+}
+
+.composer-popover {
+  position: fixed;
+  z-index: 50;
+  min-width: 260px;
+  max-width: 360px;
+  max-height: 320px;
+  overflow-y: auto;
+  background: var(--panel-elevated);
+  border: 1px solid var(--line);
+  border-radius: var(--r-md);
+  box-shadow: none;
+  padding: 4px;
+}
+
+:root[data-theme="light"] .composer-popover {
+  background: #ffffff;
+  border-color: rgba(26, 28, 27, 0.16);
+}
+
+.composer-popover[hidden] {
+  display: none;
+}
+
+.composer-popover-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  width: 100%;
+  gap: 10px;
+  padding: 6px 8px;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+}
+
+.composer-popover-row:hover {
+  background: var(--panel-hover);
+}
+
+.composer-popover-row.active {
+  background: var(--panel-active);
+}
+
+.composer-popover-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.composer-popover-title {
+  font-size: var(--fs-sm);
+  color: var(--text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-popover-desc {
+  font-size: var(--fs-xs);
+  color: var(--text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-popover-desc[hidden] {
+  display: none;
+}
+
+.composer-popover-meta {
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+}
+
+.composer-popover-modes {
+  width: min(280px, calc(100vw - 32px));
+  max-width: calc(100vw - 32px);
+  max-height: none;
+  overflow: visible;
+  padding: 8px;
+  min-width: 0;
+}
+
+.composer-popover-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 6px 10px;
+  font-size: var(--fs-sm);
+  color: var(--text);
+  border-bottom: 1px solid var(--line-soft);
+  margin-bottom: 6px;
+}
+
+.composer-popover-hint {
+  color: var(--text-faint);
+  font-size: var(--fs-xs);
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.composer-popover-hint kbd {
+  font: inherit;
+  padding: 1px 5px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 4px;
+  background: var(--panel);
+  color: var(--text-muted);
+  font-size: 10px;
+}
+
+.composer-mode-row {
+  --composer-row-accent: var(--composer-mode-accent);
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 14px;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  border-radius: var(--r-sm);
+  padding: 6px 10px;
+  color: var(--text);
+  transition:
+    background 180ms ease,
+    transform 180ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    box-shadow 180ms ease;
+}
+
+.composer-mode-row[data-mode="ask"] {
+  --composer-row-accent: #fcfcfc;
+}
+
+.composer-mode-row[data-mode="plan"] {
+  --composer-row-accent: #8fa6ff;
+}
+
+.composer-mode-row[data-mode="auto-edit"] {
+  --composer-row-accent: #83d19a;
+}
+
+.composer-mode-row[data-mode="bypass"] {
+  --composer-row-accent: #e07162;
+}
+
+/* Light themes: the ask row's near-white accent washes out on a white
+   popover (the ✓ mixes it with --text-muted) — follow the theme accent. */
+:root[data-theme="light"] .composer-mode-row[data-mode="ask"],
+:root[data-theme="porcelain"] .composer-mode-row[data-mode="ask"],
+:root[data-theme="snow"] .composer-mode-row[data-mode="ask"],
+:root[data-theme="silver"] .composer-mode-row[data-mode="ask"] {
+  --composer-row-accent: var(--accent);
+}
+
+.composer-mode-row:hover {
+  background: rgba(0, 0, 0, 0.032);
+  transform: translateX(2px);
+}
+
+.composer-mode-row.active {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(98, 193, 132, 0.12),
+      rgba(118, 93, 215, 0.1),
+      rgba(218, 113, 105, 0.08)
+    );
+}
+
+:root[data-theme="light"] .composer-mode-row.active {
+  background:
+    linear-gradient(
+      90deg,
+      rgba(98, 193, 132, 0.12),
+      rgba(118, 93, 215, 0.1),
+      rgba(218, 113, 105, 0.08)
+    );
+}
+
+:root[data-theme="light"] .composer-mode-row:hover {
+  background: rgba(26, 28, 27, 0.035);
+}
+
+.composer-mode-title {
+  font-size: var(--fs-sm);
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-mode-check {
+  display: grid;
+  place-items: center;
+  color: transparent;
+}
+
+.composer-mode-row.active .composer-mode-check {
+  color: color-mix(in srgb, var(--composer-row-accent) 72%, var(--text-muted));
+}
+
+.composer-mode-check .icon {
+  width: 14px;
+  height: 14px;
+}
+
+.composer-popover-effort {
+  border-top: 1px solid var(--line-soft);
+  margin-top: 4px;
+  padding: 8px 8px 6px;
+}
+
+.composer-effort-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
+.composer-effort-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 5px;
+  font-size: var(--fs-sm);
+  color: var(--text);
+}
+
+.composer-effort-value {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.composer-effort-help {
+  display: grid;
+  place-items: center;
+  width: 15px;
+  height: 15px;
+  border-radius: 50%;
+  border: 1px solid var(--line);
+  color: var(--text-muted);
+  font-size: 10px;
+  line-height: 1;
+  cursor: help;
+}
+
+.composer-effort-scale {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  white-space: nowrap;
+  margin-bottom: 5px;
+}
+
+.composer-effort-slider-wrap {
+  --effort-fill: 66%;
+  --effort-track: rgba(26, 28, 27, 0.12);
+  --effort-fill-a: #8ed2aa;
+  --effort-fill-b: #afa0ef;
+  --effort-fill-c: #765dd7;
+  position: relative;
+  height: 16px;
+}
+
+.composer-effort-track {
+  position: absolute;
+  top: 50%;
+  left: 0;
+  right: 0;
+  height: 8px;
+  transform: translateY(-50%);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--effort-track);
+  pointer-events: none;
+}
+
+.composer-effort-fill {
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--effort-fill);
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--effort-fill-a), var(--effort-fill-b), var(--effort-fill-c));
+  transition: width 220ms cubic-bezier(0.18, 1.22, 0.22, 1);
+}
+
+.composer-effort-glow {
+  position: absolute;
+  top: 50%;
+  left: var(--effort-fill);
+  width: 38px;
+  height: 24px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(118, 93, 215, 0.28), transparent 68%);
+  filter: blur(6px);
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, -50%) scale(0.8);
+  transition:
+    left 220ms cubic-bezier(0.18, 1.22, 0.22, 1),
+    opacity 160ms ease,
+    transform 180ms cubic-bezier(0.2, 1.35, 0.2, 1);
+}
+
+.composer-effort-knob {
+  position: absolute;
+  top: 50%;
+  left: var(--effort-fill);
+  width: 15px;
+  height: 15px;
+  border: 1px solid rgba(26, 28, 27, 0.12);
+  border-radius: 50%;
+  background: #ffffff;
+  box-shadow: 0 2px 6px rgba(118, 93, 215, 0.16), 0 1px 3px rgba(0, 0, 0, 0.12);
+  pointer-events: none;
+  transform: translate(-50%, -50%);
+  transition:
+    left 220ms cubic-bezier(0.18, 1.22, 0.22, 1),
+    transform 160ms cubic-bezier(0.2, 1.35, 0.2, 1),
+    box-shadow 160ms ease;
+}
+
+.composer-effort-slider {
+  appearance: none;
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 16px;
+  margin: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.composer-effort-slider-wrap:hover .composer-effort-glow {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.composer-effort-slider-wrap:hover .composer-effort-knob {
+  transform: translate(-50%, -50%) scale(1.08);
+  box-shadow: 0 5px 16px rgba(118, 93, 215, 0.24), 0 1px 4px rgba(0, 0, 0, 0.12);
+}
+
+.composer-effort-slider-wrap.is-bouncing .composer-effort-knob {
+  animation: composer-effort-pop 360ms cubic-bezier(0.2, 1.4, 0.28, 1);
+}
+
+@keyframes composer-effort-pop {
+  0% {
+    transform: translate(-50%, -50%) scale(0.94);
+  }
+  45% {
+    transform: translate(-50%, -50%) scale(1.2);
+  }
+  100% {
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+}
+
+:root[data-theme="light"] .composer-effort-slider-wrap {
+  --effort-track: rgba(26, 28, 27, 0.11);
+}
+
+:root:not([data-theme="light"]) .composer-effort-slider-wrap {
+  --effort-track: rgba(255, 255, 255, 0.16);
+}
+
+.composer-model-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 1200;
+  display: grid;
+  place-items: center;
+  padding: clamp(16px, 5vh, 48px) 24px;
+  background: color-mix(in srgb, var(--overlay-bg) 72%, transparent);
+  backdrop-filter: blur(2px);
+}
+
+.composer-model-dialog {
+  width: min(820px, calc(100vw - 48px));
+  max-height: min(580px, calc(100vh - 96px));
+  min-height: min(360px, calc(100vh - 96px));
+  display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr);
+  overflow: hidden;
+  border: 1px solid var(--line-soft);
+  border-radius: 20px;
+  background: var(--panel-elevated);
+  box-shadow: 0 20px 64px color-mix(in srgb, var(--overlay-bg) 55%, transparent);
+}
+
+.composer-model-search {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 32px;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 16px 0;
+}
+
+.composer-model-search-field {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--panel-soft) 70%, var(--panel-elevated));
+}
+
+.composer-model-search-field:has(input:focus-visible) {
+  box-shadow: inset 0 0 0 1px var(--line-strong);
+}
+
+.composer-model-search .icon {
+  width: 16px;
+  height: 16px;
+  color: var(--text-faint);
+}
+
+.composer-model-search input {
+  flex: 1;
+  min-width: 0;
+  height: 34px;
+  border: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: var(--fs-base);
+  outline: 0;
+}
+
+.composer-model-search input::placeholder {
+  color: var(--text-muted);
+}
+
+.composer-model-close,
+.composer-model-pin {
+  display: inline-grid;
+  place-items: center;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.composer-model-close {
+  width: 32px;
+  height: 32px;
+  border-radius: 10px;
+}
+
+.composer-model-close:hover,
+.composer-model-pin:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+
+.composer-model-tags {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  min-height: 48px;
+  padding: 10px 16px 12px;
+}
+
+.composer-model-tag,
+.model-capability-chip {
+  display: inline-flex;
+  align-items: center;
+  height: 22px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--panel-soft);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  padding: 0 8px;
+  white-space: nowrap;
+}
+
+.composer-model-tag {
+  height: 26px;
+  padding: 0 10px;
+  border-color: transparent;
+  background: color-mix(in srgb, var(--panel-soft) 65%, var(--panel-elevated));
+  cursor: pointer;
+}
+
+.composer-model-tag:hover {
+  color: var(--text);
+  background: var(--panel-hover);
+}
+
+.composer-model-tag.active {
+  color: var(--accent-contrast);
+  background: var(--accent);
+}
+
+.composer-model-workspace {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 12px;
+  min-height: 0;
+  padding: 0 12px 12px;
+}
+
+.composer-model-providers {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 6px;
+  border-radius: 14px;
+  background: color-mix(in srgb, var(--panel-soft) 65%, var(--panel-elevated));
+  overscroll-behavior: contain;
+}
+
+.composer-model-provider {
+  display: grid;
+  grid-template-columns: 24px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  min-height: 48px;
+  padding: 8px;
+  border: 0;
+  border-radius: 10px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.composer-model-provider + .composer-model-provider {
+  margin-top: 4px;
+}
+
+.composer-model-provider:hover {
+  background: var(--panel-hover);
+}
+
+.composer-model-provider[aria-pressed="true"] {
+  background: var(--panel-elevated);
+  box-shadow: 0 1px 4px var(--line-soft);
+}
+
+.composer-model-provider-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.composer-model-provider-name {
+  overflow-wrap: anywhere;
+  font-size: var(--fs-base);
+  font-weight: 600;
+}
+
+.composer-model-provider-detail {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.composer-model-provider-count {
+  min-width: 20px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+}
+
+.composer-model-list {
+  min-width: 0;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 0 4px 4px 0;
+  overscroll-behavior: contain;
+}
+
+.composer-model-group {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 30px;
+  padding: 8px 12px;
+  background: var(--panel-elevated);
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+  font-weight: 500;
+}
+
+.composer-model-group:not(:first-child) {
+  margin-top: 8px;
+}
+
+.composer-model-group-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.composer-model-group-meta {
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.composer-model-group-kind {
+  flex-shrink: 0;
+  font-weight: 400;
+}
+
+.composer-model-group-name {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text);
+  font-size: var(--fs-md);
+  line-height: 20px;
+  font-weight: 600;
+}
+
+.composer-model-group-detail {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: 400;
+}
+
+.composer-model-group-count {
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  min-width: 24px;
+  height: 24px;
+  padding: 0 6px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--panel-soft) 65%, var(--panel-elevated));
+  font-variant-numeric: tabular-nums;
+}
+
+.composer-model-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 36px;
+  align-items: center;
+  min-height: 44px;
+  border-radius: 12px;
+}
+
+.composer-model-row + .composer-model-row {
+  margin-top: 4px;
+}
+
+.composer-model-row-main {
+  min-width: 0;
+  min-height: 44px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: 8px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  padding: 8px 12px;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.composer-model-row:hover,
+.composer-model-row.focused {
+  background: var(--panel-hover);
+}
+
+.composer-model-row.selected {
+  background: color-mix(in srgb, var(--accent) 6%, var(--panel-elevated));
+}
+
+.composer-model-selected-mark {
+  width: 16px;
+  height: 16px;
+  color: var(--accent);
+  visibility: hidden;
+}
+
+.composer-model-row.selected .composer-model-selected-mark {
+  visibility: visible;
+}
+
+.composer-model-dialog button:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.composer-model-avatar {
+  display: grid;
+  place-items: center;
+  width: 24px;
+  height: 24px;
+  overflow: hidden;
+  border-radius: 7px;
+  background: var(--panel-soft);
+  color: var(--text);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+}
+
+.composer-model-avatar img,
+.composer-model-brand-mark {
+  display: block;
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
+}
+
+.composer-model-brand-mark {
+  background: currentColor;
+}
+
+.composer-model-avatar[data-provider-brand]:not([data-provider-brand="unknown"]) {
+  background: transparent;
+}
+
+.composer-model-text {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.composer-model-name,
+.composer-model-meta {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.composer-model-name {
+  font-size: var(--fs-base);
+  font-weight: 600;
+}
+
+.composer-model-meta {
+  color: var(--text-muted);
+  font-size: var(--fs-xs);
+}
+
+.composer-model-meta[hidden] {
+  display: none;
+}
+
+.composer-model-caps {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  justify-content: flex-end;
+}
+
+.composer-model-caps .model-capability-chip {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--panel-soft) 65%, transparent);
+}
+
+.composer-model-pin {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+}
+
+.composer-model-pin .icon {
+  width: 13px;
+  height: 13px;
+  transition: transform 120ms ease;
+}
+
+.composer-model-pin.pinned {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+
+.composer-model-pin.pinned .icon {
+  transform: rotate(45deg);
+}
+
+.composer-model-empty {
+  width: 100%;
+  min-height: 72px;
+  border: 1px dashed var(--line);
+  border-radius: var(--r-md);
+  background: transparent;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+@media (max-width: 760px) {
+  .composer-model-workspace {
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 8px;
+    padding: 0 8px 8px;
+  }
+
+  .composer-model-provider {
+    gap: 6px;
+    padding: 8px 6px;
+  }
+
+  .composer-model-caps {
+    display: none;
+  }
+
+  .composer-model-row-main {
+    grid-template-columns: minmax(0, 1fr) 18px;
+    padding-inline: 10px;
+  }
+}
+
+@media (max-width: 720px) {
+  .composer {
+    /* width comes from --chat-aligned-width; --chat-pad-x is fluid (clamp in
+       chat.css) so this keeps tracking the timeline padding continuously. */
+    padding: 10px;
+  }
+
+  .composer-actions {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+
+  .composer-selects {
+    flex: 1 1 auto;
+    width: auto;
+    justify-content: flex-end;
+  }
+
+  .select-button {
+    max-width: min(28vw, 138px);
+  }
+}

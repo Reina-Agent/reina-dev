@@ -1,0 +1,70 @@
+.pane-resizer,
+.workspace-inner-resizer {
+  position: relative;
+  z-index: 5;
+  background: var(--line);
+  cursor: col-resize;
+  pointer-events: auto;
+  -webkit-app-region: no-drag;
+}
+
+.pane-resizer::before,
+.workspace-inner-resizer::before {
+  content: "";
+  position: absolute;
+  inset: 0 -5px;
+  background: rgba(255, 255, 255, 0.001);
+}
+
+.pane-resizer::after,
+.workspace-inner-resizer::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 3px;
+  height: 48px;
+  border-radius: 999px;
+  opacity: 0;
+  background: color-mix(in srgb, var(--text-strong) 72%, transparent);
+  pointer-events: none;
+  transform: translate(-50%, -50%) scaleY(0.86);
+  transition:
+    opacity 120ms ease,
+    transform 120ms ease;
+}
+
+.pane-resizer:hover::after,
+.pane-resizer.active::after,
+.workspace-inner-resizer:hover::after,
+.workspace-inner-resizer.active::after {
+  opacity: 1;
+  transform: translate(-50%, -50%) scaleY(1);
+}
+
+.session-pane-resizer {
+  grid-column: 2;
+  grid-row: 1;
+  background: transparent;
+}
+
+.session-pane-resizer::after {
+  background: color-mix(in srgb, var(--text-strong) 72%, transparent);
+}
+
+.workspace-pane-resizer {
+  grid-column: 2;
+  grid-row: 1;
+  background: transparent;
+}
+
+/* This outer divider spans the titlebar, while the session divider starts
+   below it. Offset only the visual grip by half the titlebar so both grips
+   share the same vertical center; keep the drag target unchanged. */
+body[data-window="main"] .workspace-pane-resizer::after {
+  top: calc(50% + var(--topbar-height) / 2);
+}
+
+body.is-resizing-pane {
+  user-select: none;
+}

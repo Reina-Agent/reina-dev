@@ -1,0 +1,16 @@
+export const description = [
+  "Advance team-mode pipeline phase: plan → prd → exec → verify → fix (loop) → complete / failed. Pass `null` (or omit) to clear the indicator. The renderer's DAG panel banners the current phase.",
+  "",
+  "**ENFORCED — write a handoff note BEFORE leaving a working stage (plan/prd/exec/verify/fix) for another stage.** The engine REFUSES the transition until a fresh `kind:handoff` note exists (one written since you entered the current stage). Call `note(...)` with `tags: [\"kind:handoff\"]` and a body covering:",
+  "  - **Decided** — key decisions from the stage you are leaving",
+  "  - **Rejected** — alternatives dropped and why",
+  "  - **Risks** — what the next stage must watch for",
+  "  - **Files** — what this stage created or modified",
+  "  - **Remaining** — work left for the next stage",
+  "`kind:handoff` notes pin into the notebook index and survive compaction — next-stage workers + your future self read them via `list_notes`.",
+  "Exempt from the gate (no handoff needed): clearing the indicator (`null`), aborting (`failed`), and the first transition INTO the pipeline from the undeclared state.",
+  "",
+  "**ENFORCED — `complete` additionally requires the DAG to be settled.** The engine refuses `set_phase(\"complete\")` while any subtask node is pending / blocked / in_progress / failed: every node must end up `completed` or explicitly `cancelled` (via `update_subtask`, with a resultSummary saying why). Re-dispatch or cancel the stragglers first; to abandon the effort entirely use `failed` instead (not gated).",
+  "",
+  "**ENFORCED — `fix` may be entered at most 3 times per pipeline run.** Past that the engine refuses further verify→fix rounds: repeating the same fix is thrashing, not progress. Cancel the un-fixable nodes (with a resultSummary of what was tried) and `complete` honestly, abandon via `failed`, or go back to `plan` to restructure (re-entering `plan` resets the budget).",
+].join("\n");

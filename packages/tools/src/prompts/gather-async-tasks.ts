@@ -1,0 +1,1 @@
+export const description = "Read FULL bodies of multiple async tasks in one call (snapshot of current state — does NOT block). Groups by status, includes results/errors verbatim, totals token spend. For one task use `check_async_task`; for headers-only use `list_async_tasks`; to BLOCK until all terminal use `wait_async_tasks`.";

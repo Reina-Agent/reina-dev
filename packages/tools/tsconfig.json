@@ -1,0 +1,9 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "composite": true,
+    "outDir": "../../dist/packages/tools"
+  },
+  "include": ["src/**/*.ts", "src/**/*.json"],
+  "references": [{ "path": "../protocol" }]
+}

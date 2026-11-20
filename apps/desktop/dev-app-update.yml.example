@@ -1,0 +1,14 @@
+# Local electron-updater dev feed (opt-in).
+#
+# Copy this file to `dev-app-update.yml` (same folder) to exercise auto-update
+# from an unpackaged `npm run desktop` build. When present, auto-update.ts sets
+# `forceDevUpdateConfig` and checks this feed instead of the baked one.
+#
+# Without the copy, dev runs do NOT hit the network for updates. The real
+# `dev-app-update.yml` is gitignored.
+#
+# Trick for testing: temporarily set the app version in package.json LOWER than
+# the latest published release so the updater sees an update as available.
+provider: github
+owner: Reina-Agent
+repo: Reina

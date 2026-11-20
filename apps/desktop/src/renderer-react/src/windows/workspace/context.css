@@ -1,0 +1,133 @@
+.context-disclosure {
+  interpolate-size: allow-keywords;
+}
+
+.context-disclosure::details-content {
+  block-size: 0;
+  opacity: 0;
+  overflow: hidden;
+  transition:
+    block-size var(--motion-enter) var(--ease-out-soft),
+    opacity var(--motion-fast) ease,
+    content-visibility var(--motion-enter) allow-discrete;
+}
+
+.context-disclosure[open]::details-content {
+  block-size: auto;
+  opacity: 1;
+}
+
+.context-disclosure > summary {
+  display: flex;
+  align-items: baseline;
+  gap: 0.375rem;
+  list-style: none;
+  cursor: pointer;
+  transition: background-color var(--motion-fast) ease;
+}
+
+.context-disclosure > summary::-webkit-details-marker {
+  display: none;
+}
+
+.context-disclosure > summary::before {
+  content: "▸";
+  flex: 0 0 0.75em;
+  text-align: center;
+  color: var(--muted-foreground);
+  transition: transform var(--motion-enter) var(--ease-out-soft);
+}
+
+.context-disclosure[open] > summary::before {
+  transform: rotate(90deg);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .context-disclosure::details-content {
+    transition-duration: var(--motion-fast);
+  }
+
+  .context-disclosure > summary,
+  .context-disclosure > summary::before {
+    transition: none;
+  }
+}
+.context-free {
+  background: repeating-linear-gradient(135deg, transparent, transparent 3px, color-mix(in srgb, var(--muted-foreground) 15%, transparent) 3px, color-mix(in srgb, var(--muted-foreground) 15%, transparent) 4px);
+}
+
+.context-inspector {
+  container: context-dashboard / inline-size;
+}
+
+.context-dashboard,
+.context-main-column {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.context-stats-grid,
+.context-main-grid,
+.context-secondary-grid {
+  display: grid;
+  min-width: 0;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 8px;
+}
+
+.context-card {
+  min-width: 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: var(--background);
+}
+
+.context-browser-card {
+  display: flex;
+  min-height: 0;
+  flex-direction: column;
+}
+
+.context-browser-body {
+  min-height: 0;
+  max-height: 560px;
+  overflow: auto;
+  overscroll-behavior: contain;
+}
+
+.context-dashboard-scroll,
+.context-browser-body {
+  overflow-anchor: none;
+}
+
+.context-events-list,
+.context-file-list {
+  height: 300px;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-gutter: stable;
+}
+
+@container context-dashboard (min-width: 480px) {
+  .context-stats-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Reina's side pane is narrower than the upstream full-page dashboard. */
+@container context-dashboard (min-width: 620px) {
+  .context-main-grid,
+  .context-secondary-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .context-browser-body {
+    height: 0;
+    max-height: none;
+    flex: 1 1 0px;
+    contain: size;
+  }
+}

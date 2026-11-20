@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 💬 提问与讨论
+    url: https://github.com/Reina-Agent/Reina/discussions
+    about: 使用问题、想法交流请到 Discussions
+  - name: 🔒 安全漏洞
+    url: https://github.com/Reina-Agent/Reina/security/advisories/new
+    about: 安全问题请私下反馈，不要开公开 Issue
